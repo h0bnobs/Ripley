@@ -8,6 +8,7 @@ import os
 import xml.etree.ElementTree as ET
 import pexpect
 import re
+from termcolor import colored
 
 COLOURS = {
     "plus": "\033[1;34m[\033[1;m\033[1;32m+\033[1;m\033[1;34m]",
@@ -15,7 +16,9 @@ COLOURS = {
     "cross": "\033[1;34m[\033[1;m\033[1;31mx\033[1;m\033[1;34m]",
     "star": "\033[1;34m[*]\033[1;m",
     "warn": "\033[1;34m[\033[1;m\033[1;33m!\033[1;m\033[1;34m]",
-    "end": "\033[1;m"
+    "end": "\033[1;m",
+    "redStart": "\e[31m",
+    "redEnd": "\e[0m",
 }
 
 SPINNER_STATES = itertools.cycle(['-', '\\', '|', '/'])
@@ -51,8 +54,6 @@ __________.__       .__
  |    |   \  |  |_> >  |_\  ___/\___  |
  |____|_  /__|   __/|____/\___  > ____|
         \/   |__|             \/\/     
-    @BeeSec
-    Helping you Bee Secure
 
 usage: Ripley.py -u <url>
 """
@@ -65,6 +66,23 @@ def parse_args():
     return parser.parse_args()
 
 
+def get_target_ip():
+    xml_file = 'temp_output.xml'
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+    ip = None
+    for address in root.findall(".//address[@addrtype='ipv4']"):
+        ip = address.get('addr')
+
+    # extra check to make sure the ip is correct
+    ips = get_ipv4_addresses(parse_args().target)
+    if ip in ips:
+        return ip
+    else:
+        print("Something went wrong getting the target IP")
+        return 0
+
+
 def run_nmap(command):
     try:
         spinner = Spinner()
@@ -75,6 +93,8 @@ def run_nmap(command):
 
         print(f"\nCommand '{command}' executed successfully.")
         print(result.stdout)
+        print(COLOURS["star"] + COLOURS["star"] + " Target IP is " + str(get_target_ip()) + " " + COLOURS["star"]
+              + COLOURS["star"] + "\n")
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while executing '{command}': {e}")
         print("Error output:")
@@ -105,7 +125,7 @@ def run_ftp(command, target_ip):
             print(COLOURS["cross"] + " anonymous login failed." + COLOURS["end"])
 
     except pexpect.exceptions.ExceptionPexpect as e:
-        print(COLOURS["warn"] + " Error during FTP command execution: " + COLOURS["end"])
+        print(COLOURS["warn"] + " cannot connect to ftp " + COLOURS["end"])
         print(str(e))
 
 
@@ -120,7 +140,6 @@ def get_ipv4_addresses(domain):
 
     # Extract and filter IPv4 addresses
     ipv4_addresses = [line for line in output.split('\n') if ipv4_pattern.match(line)]
-
     return ipv4_addresses
 
 
@@ -128,18 +147,11 @@ def run_smbclient(command):
     # if you want to test this properly: https://app.hackthebox.com/machines/186 - box name is bastion and has open
     # smb shares.
 
-    xml_file = 'temp_output.xml'
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-    ip = None
-    for address in root.findall(".//address[@addrtype='ipv4']"):
-        ip = address.get('addr')
-
+    ip = get_target_ip()
     # extra check to make sure the ip is correct
     ips = get_ipv4_addresses(parse_args().target)
     if ip in ips:
         command += ip
-
         try:
             print(COLOURS["warn"] + " smbclient will now attempt to anonymously list shares" + COLOURS["end"])
             result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -168,7 +180,7 @@ def run_http_get(command):
         with open(file_name, 'w') as file:
             file.write(f"{target_url}:80")
     try:
-        #doesnt need to be an input because http-get.py is already taking care of all of that, this just prompts the user.
+        # doesnt need to be an input because http-get.py is already taking care of all of that, this just prompts the user.
         print(COLOURS["warn"] + " http-get will start now" + COLOURS["end"])
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True)
@@ -198,15 +210,53 @@ def run_nikto(command):
         print(e.stderr)
 
 
+def run_showmount(command):
+    try:
+        ip = get_target_ip()
+        command += ip
+        print(COLOURS["warn"] + " showmount will now attempt to query the mount daemon on the remote host: " + ip +
+              COLOURS["end"])
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+
+
+def run_wpscan(command):
+    try:
+        target_url = parse_args().target
+        command += target_url
+        print(COLOURS["warn"] + " wpscan will now attempt to scan the remote host: " + target_url + COLOURS["end"])
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print("Nothing found by wpscan")
+        print(e.stderr)
+
+
+def run_host(command):
+    try:
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True)
+        print(colored(result.stdout, "red"))
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+
+
 if __name__ == "__main__":
+    # Average time for threading: 12.62 seconds
+    # Average time for multiprocessing: 11.63 seconds
+    # Average time for xargs: 13.64 seconds
     banner()
+    target = parse_args().target
+    run_host("host " + target)
     while True:
         flags = input(
             "What flags do you want to include in your nmap scan? Please format them as follows in the example: 'sV "
             "Pn sC oX'\n").split()
         break
 
-    target = parse_args().target
     if len(flags) >= 1:
         nmap_command = "nmap -oX temp_output.xml "
         for flag in flags:
@@ -222,9 +272,13 @@ if __name__ == "__main__":
 
     smb_client_command = "smbclient -L "
     run_smbclient(smb_client_command)
-    os.remove('temp_output.xml')
 
-    # probably best not to include this as it does not work.....
+    spscan_command = "wpscan --url "
+    run_wpscan(spscan_command)
+
+    showmount_command = "showmount -e "
+    #not working :( run_showmount(showmount_command)
+
     ftp_command = "ftp " + target
     run_ftp(ftp_command, target)
 
@@ -239,3 +293,5 @@ if __name__ == "__main__":
     #     nmap_command = f"nmap -sV {parse_args().targeturl}"
     #     run_nmap(nmap_command)
     #     run_http_get("python http-get-ripley.py -i targets_for_ripley.txt")
+
+    os.remove('temp_output.xml')
