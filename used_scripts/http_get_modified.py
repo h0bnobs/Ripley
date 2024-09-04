@@ -40,7 +40,7 @@ def main(argv):
     warn = "\033[1;34m[\033[1;m\033[1;33m!\033[1;m\033[1;34m]"
     end = "\033[1;m"
 
-    banner()
+    #banner()
     target_file = ''
 
     try:
@@ -58,7 +58,7 @@ def main(argv):
 
     print(star + " Target file is " + target_file + end)
 
-    output_dir = "../http-get_out"  #input("Enter the directory where you want to save the output files: ")
+    output_dir = "./used_scripts/http_get_out"  #input("Enter the directory where you want to save the output files: ")
     os.makedirs(output_dir, exist_ok=True)
 
     plaintext_path = os.path.join(output_dir, "http-get-plaintext.txt")

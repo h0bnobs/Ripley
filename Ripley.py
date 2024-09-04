@@ -103,7 +103,7 @@ def run_nmap(command):
 
 def run_ftp(command, target_ip):
     # this shit does not work.....
-    # if you want to test, machines are fawn and access on htb.
+    # if you want to test, machines are fawn, access and Devel on htb.
     try:
         print(COLOURS["warn"] + " attempting to connect to ftp anonymously" + COLOURS["end"])
         child = pexpect.spawn(command)
@@ -170,9 +170,10 @@ def run_smbclient(command):
             print(i)
 
 
-def run_http_get(command):
+def run_http_get():
     target_url = parse_args().target
-    file_name = "targets_for_ripley.txt"
+    file_name = "./used_scripts/http_get_targets.txt"
+    final = f"python ./used_scripts/http_get_modified.py -i ./used_scripts/http_get_targets.txt"
     if os.path.exists(file_name):
         with open(file_name, 'w') as file:
             file.write(f"{target_url}:80")
@@ -182,7 +183,7 @@ def run_http_get(command):
     try:
         # doesnt need to be an input because http-get.py is already taking care of all of that, this just prompts the user.
         print(COLOURS["warn"] + " http-get will start now" + COLOURS["end"])
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        result = subprocess.run(final, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True)
         print(result.stdout)
     except subprocess.CalledProcessError as e:
@@ -191,10 +192,10 @@ def run_http_get(command):
         print(e.stderr)
 
 
-def run_nikto(command):
+def run_nikto(n_command):
     try:
         print('\n' + COLOURS["warn"] + " nikto now running. This will take a long time." + COLOURS["end"])
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        process = subprocess.Popen(n_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         while True:
             output = process.stdout.readline()
             if output == "" and process.poll() is not None:
@@ -216,22 +217,31 @@ def run_showmount(command):
         command += ip
         print(COLOURS["warn"] + " showmount will now attempt to query the mount daemon on the remote host: " + ip +
               COLOURS["end"])
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True)
         print(result.stdout)
     except subprocess.CalledProcessError as e:
         print(e.stderr)
 
 
 def run_wpscan(command):
+    target_url = parse_args().target
+    final = command + target_url + " --random-user-agent"
+    print(COLOURS["warn"] + " wpscan will now attempt to scan the remote host: " + target_url + COLOURS["end"])
     try:
-        target_url = parse_args().target
-        command += target_url
-        print(COLOURS["warn"] + " wpscan will now attempt to scan the remote host: " + target_url + COLOURS["end"])
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True)
-        print(result.stdout)
+        process = subprocess.Popen(final, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        while True:
+            output = process.stdout.readline()
+            if output == "" and process.poll() is not None:
+                break
+            if output:
+                print(output.strip())
+
+        stderr = process.communicate()[1]
+        if process.returncode != 0:
+            print(stderr.strip())
+
     except subprocess.CalledProcessError as e:
-        print("Nothing found by wpscan")
         print(e.stderr)
 
 
@@ -244,54 +254,91 @@ def run_host(command):
         print(e.stderr)
 
 
-if __name__ == "__main__":
+def run_shc(target_url):
+    command = f"python ./used_scripts/security-header-checker.py -u https://{target_url}"
+    print(COLOURS["warn"] + " Scanning for security headers and cookie attributes" + COLOURS["end"])
+    try:
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True)
+        print(result.stdout)
+        print("\n")
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+
+
+def run_sslscan(command):
+    final = f"{command}{parse_args().target}:443"
+    print(COLOURS["warn"] + " sslscan is now running" + COLOURS["end"])
+    try:
+        result = subprocess.run(final, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True)
+        print(result.stdout)
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+
+
+def main():
     # Average time for threading: 12.62 seconds
     # Average time for multiprocessing: 11.63 seconds
     # Average time for xargs: 13.64 seconds
     banner()
     target = parse_args().target
-    run_host("host " + target)
-    while True:
-        flags = input(
-            "What flags do you want to include in your nmap scan? Please format them as follows in the example: 'sV "
-            "Pn sC oX'\n").split()
-        break
+    run_host(f"host {target}")
+    flags = input(
+        "Enter the flags you want for your nmap scan (e.g., 'sS O oX <output>'). Type '1' for an aggressive scan: ").split()
 
-    if len(flags) >= 1:
-        nmap_command = "nmap -oX temp_output.xml "
-        for flag in flags:
-            nmap_command += f"-{flag} "
-    else:
-        nmap_command = "nmap -oX temp_output.xml "
+    output_file = next((flags[i + 1] for i, flag in enumerate(flags) if flag == "oX"), None)
+    aggressive = '1' in flags
 
-    run_nmap(nmap_command + target)
+    if aggressive is False:
+        if output_file is None:
+            nmap_command = "nmap -oX temp_output.xml "
+            for flag in flags:
+                nmap_command += f"-{flag} "
+        else:
+            nmap_command = f"nmap -oX {output_file} "
+            for flag in flags:
+                if flag != f"{output_file}" and flag != 'oX':
+                    nmap_command += f"-{flag} "
 
-    http_get_targets = "targets_for_ripley.txt"
-    http_get_command = "python http-get-ripley.py -i " + http_get_targets
-    run_http_get(http_get_command)
+        def is_substring_repeated(main_string, substring):
+            return main_string.count(substring) > 1
+
+        if is_substring_repeated(nmap_command.strip(), "oX"):
+            print("\nYour flags:")
+            for flag in flags:
+                print(f"{flag} ")
+            raise Exception("Something has gone wrong with your nmap flags, please double check them and try again.")
+        run_nmap(f"{nmap_command}{target}".strip())
+    elif aggressive is True:
+        # TODO: add some kinda warning
+        run_nmap(f"nmap -A {target}")
+
+    run_http_get()
 
     smb_client_command = "smbclient -L "
     run_smbclient(smb_client_command)
 
-    spscan_command = "wpscan --url "
-    run_wpscan(spscan_command)
+    wpscan_command = "wpscan --url "
+    run_wpscan(wpscan_command)
 
-    showmount_command = "showmount -e "
-    #not working :( run_showmount(showmount_command)
+    #showmount_command = "showmount -e "
+    #not working run_showmount(showmount_command)
+
+    run_shc(target)
+
+    ssl_scan_command = "sslscan --url "
+    run_sslscan(ssl_scan_command)
 
     ftp_command = "ftp " + target
     run_ftp(ftp_command, target)
 
     nikto_command = "nikto -host " + target
+    print(nikto_command)
     run_nikto(nikto_command)
 
-    # if pn_flag == True:
-    #     nmap_command = f"nmap -sV -Pn {parse_args().targeturl}"
-    #     run_nmap(nmap_command)
-    #     run_http_get("python http-get-ripley.py -i targets_for_ripley.txt")
-    # else:
-    #     nmap_command = f"nmap -sV {parse_args().targeturl}"
-    #     run_nmap(nmap_command)
-    #     run_http_get("python http-get-ripley.py -i targets_for_ripley.txt")
-
     os.remove('temp_output.xml')
+
+
+if __name__ == "__main__":
+    main()
