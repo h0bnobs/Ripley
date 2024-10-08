@@ -1,2 +1,2 @@
 # Ripley
-Web application pen-testing tool
+Pen testing tool
