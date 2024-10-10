@@ -243,7 +243,7 @@ def get_cookies(target_url):
     chrome_options.add_argument("--headless")  # Run in headless mode
     chrome_options.add_argument("--no-sandbox")  # Required for some environments
     chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
-
+    chrome_options.binary_location = "/usr/bin/chromium"
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
     try:

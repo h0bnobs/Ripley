@@ -1,7 +1,8 @@
-pexpect~=4.9.0
-termcolor~=2.4.0
-urllib3~=2.0.7
-requests~=2.31.0
-selenium~=4.23.1
-termcolor~=2.4.0
-webdriver-manager~=4.0.2
+pexpect
+termcolor
+urllib3
+requests
+selenium
+webdriver-manager
+customtkinter
+python-libnmap

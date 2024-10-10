@@ -1,90 +1,87 @@
 import subprocess
 import argparse
-import threading
-import itertools
-import sys
-import time
 import os
 import xml.etree.ElementTree as ET
 import pexpect
 import re
 from termcolor import colored
-
-COLOURS = {
-    "plus": "\033[1;34m[\033[1;m\033[1;32m+\033[1;m\033[1;34m]",
-    "minus": "\033[1;34m[\033[1;m\033[1;31m-\033[1;m\033[1;34m]",
-    "cross": "\033[1;34m[\033[1;m\033[1;31mx\033[1;m\033[1;34m]",
-    "star": "\033[1;34m[*]\033[1;m",
-    "warn": "\033[1;34m[\033[1;m\033[1;33m!\033[1;m\033[1;34m]",
-    "end": "\033[1;m",
-    "redStart": "\e[31m",
-    "redEnd": "\e[0m",
-}
-
-SPINNER_STATES = itertools.cycle(['-', '\\', '|', '/'])
-
-
-class Spinner:
-    def __init__(self):
-        self.stop_event = threading.Event()
-        self.spin_thread = threading.Thread(target=self.spin, daemon=True)
-
-    def spin(self):
-        sys.stdout.write(COLOURS["warn"] + " Nmap is now running and may take a while, be patient " + COLOURS["end"])
-        while not self.stop_event.is_set():
-            sys.stdout.write(next(SPINNER_STATES))
-            sys.stdout.flush()
-            sys.stdout.write('\b')
-            time.sleep(0.1)
-
-    def start(self):
-        self.spin_thread.start()
-
-    def stop(self):
-        self.stop_event.set()
-        self.spin_thread.join()
-        sys.stdout.write('\b')
-
-
-def banner():
-    banner_text = r"""
-__________.__       .__                
-\______   \__|_____ |  |   ____ ___.__.
- |       _/  \____ \|  | _/ __ <   |  |
- |    |   \  |  |_> >  |_\  ___/\___  |
- |____|_  /__|   __/|____/\___  > ____|
-        \/   |__|             \/\/     
-
-usage: Ripley.py -u <url>
-"""
-    print(banner_text)
+from scripts.run_commands import run_verbose_command_with_input, run_verbose_command
+from scripts.utils import COLOURS, Spinner, banner, read_config_file
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Ripley - One stop basic web app scanner.")
-    parser.add_argument("-u", "--url", dest="target", required=True, help="Target url")
+    parser = argparse.ArgumentParser(description="ripley - One stop basic web app scanner.")
+    parser.add_argument("-c", "--config", dest="config", required=False, help="Config text file")
     return parser.parse_args()
 
+def main():
+    # Average time for threading: 12.62 seconds
+    # Average time for multiprocessing: 11.63 seconds
+    # Average time for xargs: 13.64 seconds
+    banner()
+    args = parse_args()
 
-def get_target_ip():
-    xml_file = 'temp_output.xml'
-    tree = ET.parse(xml_file)
-    root = tree.getroot()
-    ip = None
-    for address in root.findall(".//address[@addrtype='ipv4']"):
-        ip = address.get('addr')
+    if not args.config:
+        raise Exception("You must use -c to specify a configuration file!")
 
-    # extra check to make sure the ip is correct
-    ips = get_ipv4_addresses(parse_args().target)
-    if ip in ips:
-        return ip
+    # If -c is provided, process the targets from the config file.
+    config = read_config_file(args.config)
+    if config is None:
+        raise Exception("Config is null!")
     else:
-        print("Something went wrong getting the target IP")
-        return 0
+        if len(config.get("targets")) > 1:
+            multiple_targets(config)
+        elif len(config.get("targets")) == 1:
+            single_target(config)
+        else:
+            raise Exception("No target(s) found!")
+    print()
 
 
-def run_nmap(command):
+def multiple_targets(config):
+    for target in config.get("targets"):
+            run_host(f"host {target}")
+            nmap_flags = config['nmap_parameters']
+            run_nmap(target, nmap_flags)
+            run_smbclient(target)
+            # run_showmount(target)
+
+def single_target(config):
+    target = config.get("target")
+    nmap_flags = config['nmap_parameters']
+    output_filename = f"{target}.xml"
+    run_host(f"host {target}")
+    nmap_flags = config['nmap_parameters']
+
+    run_nmap(target, nmap_flags)
+    run_http_get()
+
+    smb_client_command = "smbclient -L "
+    run_smbclient(smb_client_command)
+
+    wpscan_command = "wpscan --url "
+    run_wpscan(wpscan_command)
+
+    # showmount_command = "showmount -e "
+    # not working run_showmount(showmount_command)
+
+    # also not working
+    # run_shc(target)
+
+    ssl_scan_command = "sslscan --url "
+    run_sslscan(ssl_scan_command)
+
+    ftp_command = "ftp " + target
+    run_ftp(ftp_command, target)
+
+    nikto_command = "nikto -host " + target
+    print(nikto_command)
+    run_nikto(nikto_command)
+
+
+def run_nmap(target, flags):
     try:
+        command = f"nmap {flags} {target}"
         spinner = Spinner()
         spinner.start()
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -93,8 +90,6 @@ def run_nmap(command):
 
         print(f"\nCommand '{command}' executed successfully.")
         print(result.stdout)
-        print(COLOURS["star"] + COLOURS["star"] + " Target IP is " + str(get_target_ip()) + " " + COLOURS["star"]
-              + COLOURS["star"] + "\n")
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while executing '{command}': {e}")
         print("Error output:")
@@ -129,7 +124,6 @@ def run_ftp(command, target_ip):
         print(str(e))
 
 
-# GPT special:
 def get_ipv4_addresses(domain):
     # Run the dig command
     result = subprocess.run(['dig', domain, 'A', '+short'], stdout=subprocess.PIPE)
@@ -143,17 +137,13 @@ def get_ipv4_addresses(domain):
     return ipv4_addresses
 
 
-def run_smbclient(command):
+def run_smbclient(target):
     # if you want to test this properly: https://app.hackthebox.com/machines/186 - box name is bastion and has open
     # smb shares.
 
-    ip = get_target_ip()
-    # extra check to make sure the ip is correct
-    ips = get_ipv4_addresses(parse_args().target)
-    if ip in ips:
-        command += ip
+        command = f"smbclient -L {target}"
         try:
-            print(COLOURS["warn"] + " smbclient will now attempt to anonymously list shares" + COLOURS["end"])
+            print(f'\n {COLOURS["warn"]} smbclient will now attempt to anonymously list shares {COLOURS["end"]}')
             result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                     text=True, input='\n')
             print(COLOURS["plus"] + " smbclient found some shares! " + COLOURS["end"])
@@ -161,35 +151,21 @@ def run_smbclient(command):
 
         except subprocess.CalledProcessError as e:
             print(e.stderr)
-    else:
-        print(COLOURS["end"] + COLOURS["warn"] + " Something went wrong determining the ip of the target for "
-                                                 "smbclient. Have you got the correct target url?" + COLOURS["end"])
-        print("IP found during Nmap scan: " + ip)
-        print("IP(s) found via dig command:")
-        for i in ips:
-            print(i)
 
 
 def run_http_get():
     target_url = parse_args().target
-    file_name = "./used_scripts/http_get_targets.txt"
-    final = f"python ./used_scripts/http_get_modified.py -i ./used_scripts/http_get_targets.txt"
+    print(COLOURS["warn"] + " http-get will start now" + COLOURS["end"])
+    file_name = "./scripts/http_get_targets.txt"
+    final = f"python scripts/http-get-improved.py -i scripts/http_get_targets.txt"
     if os.path.exists(file_name):
         with open(file_name, 'w') as file:
             file.write(f"{target_url}:80")
     else:
         with open(file_name, 'w') as file:
             file.write(f"{target_url}:80")
-    try:
-        # doesnt need to be an input because http-get.py is already taking care of all of that, this just prompts the user.
-        print(COLOURS["warn"] + " http-get will start now" + COLOURS["end"])
-        result = subprocess.run(final, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True)
-        print(result.stdout)
-    except subprocess.CalledProcessError as e:
-        print(f"An error occurred while executing '{command}': {e}")
-        print("Error output:")
-        print(e.stderr)
+    # todo maybe the input to this command ("scripts/http_get_out"), will change later. Maybe have a dir dedicated to entire ripley.cli scan outputs?
+    run_verbose_command_with_input(final, f"scripts/http_get_out", 1)
 
 
 def run_nikto(n_command):
@@ -211,12 +187,10 @@ def run_nikto(n_command):
         print(e.stderr)
 
 
-def run_showmount(command):
+def run_showmount(target):
     try:
-        ip = get_target_ip()
-        command += ip
-        print(COLOURS["warn"] + " showmount will now attempt to query the mount daemon on the remote host: " + ip +
-              COLOURS["end"])
+        command = f"showmount -e {target}"
+        print(f"{COLOURS['warn']} showmount will now attempt to query the mount daemon on {target}{COLOURS['end']}")
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True)
         print(result.stdout)
@@ -255,7 +229,7 @@ def run_host(command):
 
 
 def run_shc(target_url):
-    command = f"python ./used_scripts/security-header-checker.py -u https://{target_url}"
+    command = f"python ./scripts/security-header-checker.py -u https://{target_url}"
     print(COLOURS["warn"] + " Scanning for security headers and cookie attributes" + COLOURS["end"])
     try:
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -277,16 +251,13 @@ def run_sslscan(command):
         print(e.stderr)
 
 
-def main():
-    # Average time for threading: 12.62 seconds
-    # Average time for multiprocessing: 11.63 seconds
-    # Average time for xargs: 13.64 seconds
-    banner()
-    target = parse_args().target
-    run_host(f"host {target}")
-    flags = input(
-        "Enter the flags you want for your nmap scan (e.g., 'sS O oX <output>'). Type '1' for an aggressive scan: ").split()
-
+def nmap_command_logic(flags, target):
+    """
+    Takes the given flags and the target and does the logic for the nmap flags and then runs the command after it has correctly identified the flags.
+    :param flags: The Nmap flags given once the program has started running.
+    :param target: The current target.
+    """
+    # this part is logic for the nmap flags
     output_file = next((flags[i + 1] for i, flag in enumerate(flags) if flag == "oX"), None)
     aggressive = '1' in flags
 
@@ -300,7 +271,6 @@ def main():
             for flag in flags:
                 if flag != f"{output_file}" and flag != 'oX':
                     nmap_command += f"-{flag} "
-
         def is_substring_repeated(main_string, substring):
             return main_string.count(substring) > 1
 
@@ -313,31 +283,6 @@ def main():
     elif aggressive is True:
         # TODO: add some kinda warning
         run_nmap(f"nmap -A {target}")
-
-    run_http_get()
-
-    smb_client_command = "smbclient -L "
-    run_smbclient(smb_client_command)
-
-    wpscan_command = "wpscan --url "
-    run_wpscan(wpscan_command)
-
-    #showmount_command = "showmount -e "
-    #not working run_showmount(showmount_command)
-
-    run_shc(target)
-
-    ssl_scan_command = "sslscan --url "
-    run_sslscan(ssl_scan_command)
-
-    ftp_command = "ftp " + target
-    run_ftp(ftp_command, target)
-
-    nikto_command = "nikto -host " + target
-    print(nikto_command)
-    run_nikto(nikto_command)
-
-    os.remove('temp_output.xml')
 
 
 if __name__ == "__main__":
