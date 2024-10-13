@@ -57,12 +57,12 @@ __________.__       .__
  |____|_  /__|   __/|____/\___  > ____|
         \/   |__|             \/\/     
 
-usage: ripley_cli.py -u <url>
+usage: ripley_cli.py -c <config_file>
 """
     print(colored(f'{banner_text}', "light_blue"))
 
 
-def read_config_file(filepath):
+def parse_config_file(filepath):
     """
     Reads the JSON configuration file.
     :param filepath: The path to the configuration file.

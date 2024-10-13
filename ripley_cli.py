@@ -1,18 +1,18 @@
-import subprocess
 import argparse
 import os
-import xml.etree.ElementTree as ET
+from typing import List, Dict
 import pexpect
 import re
 from termcolor import colored
-from scripts.run_commands import run_verbose_command_with_input, run_verbose_command
-from scripts.utils import COLOURS, Spinner, banner, read_config_file
+from scripts.run_commands import *
+from scripts.utils import COLOURS, Spinner, banner, parse_config_file
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="ripley - One stop basic web app scanner.")
     parser.add_argument("-c", "--config", dest="config", required=False, help="Config text file")
     return parser.parse_args()
+
 
 def main():
     # Average time for threading: 12.62 seconds
@@ -24,37 +24,74 @@ def main():
     if not args.config:
         raise Exception("You must use -c to specify a configuration file!")
 
-    # If -c is provided, process the targets from the config file.
-    config = read_config_file(args.config)
+    config = parse_config_file(args.config)
+
+    # process the configuration settings
     if config is None:
         raise Exception("Config is null!")
+
+    single_target = config.get("single_target", "").strip()
+    multiple_targets = config.get("multiple_targets", [])
+    targets_file = config.get("targets_file", "").strip()
+
+    target_count = sum([bool(single_target), bool(multiple_targets), bool(targets_file)])
+
+    if target_count != 1:
+        raise Exception("You must specify exactly one of 'single_target', 'multiple_targets', or 'targets_file'.")
+
+    target_list = []
+
+    # get targets based on the specified setting
+    if single_target:
+        print(f"using {single_target} as a target from 'single_target' in {args.config}")
+        target_list.append(single_target)
+    elif multiple_targets:
+        print(f"using {multiple_targets} as targets from 'multiple_targets' in {args.config}")
+        target_list.extend(multiple_targets)
+    elif targets_file:
+        with open(targets_file, "r") as file:
+            target_list = [line.strip() for line in file if line.strip()]
+        print(f"using {target_list} as targets from 'targets_file' called {targets_file} in {args.config}")
+
+    # once target_list is filled, either run_on_multiple_targets or run_on_single_target is called based on the length
+    if len(target_list) > 1:
+        run_on_multiple_targets(target_list, config)
+    elif len(target_list) == 1:
+        run_on_single_target(target_list, config)
     else:
-        if len(config.get("targets")) > 1:
-            multiple_targets(config)
-        elif len(config.get("targets")) == 1:
-            single_target(config)
-        else:
-            raise Exception("No target(s) found!")
-    print()
+        raise Exception("Target list empty!")
 
 
-def multiple_targets(config):
-    for target in config.get("targets"):
-            run_host(f"host {target}")
-            nmap_flags = config['nmap_parameters']
-            run_nmap(target, nmap_flags)
-            run_smbclient(target)
-            # run_showmount(target)
+def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> None:
+    """
+    Runs the tool for multiple targets given as a list.
+    :param target_list: The list of targets to run.
+    :param config: The configuration file as a dictionary.
+    :return: None
+    """
+    for target in target_list:
+        run_host(f"host {target}")
+        nmap_flags = config['nmap_parameters']
+        run_nmap(target, nmap_flags)
+        run_smbclient(target)
+        # run_showmount(target)
 
-def single_target(config):
-    target = config.get("target")
+
+def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None:
+    """
+    Runs the tool on one target given as a list.
+    :param target_list: The list of targets to run.
+    :param config: The configuration file as a dictionary.
+    :return: None
+    """
+    target = target_list[0]  # assuming there is only one target in the list!
     nmap_flags = config['nmap_parameters']
+    # todo do something with this:!!
     output_filename = f"{target}.xml"
-    run_host(f"host {target}")
-    nmap_flags = config['nmap_parameters']
 
+    run_host(f"host {target}")
     run_nmap(target, nmap_flags)
-    run_http_get()
+    run_http_get(target)
 
     smb_client_command = "smbclient -L "
     run_smbclient(smb_client_command)
@@ -82,14 +119,12 @@ def single_target(config):
 def run_nmap(target, flags):
     try:
         command = f"nmap {flags} {target}"
+        print(command)
         spinner = Spinner()
         spinner.start()
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True)
+        # todo no verbose output as of now.
+        run_verbose_command(command)
         spinner.stop()
-
-        print(f"\nCommand '{command}' executed successfully.")
-        print(result.stdout)
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while executing '{command}': {e}")
         print("Error output:")
@@ -97,7 +132,7 @@ def run_nmap(target, flags):
 
 
 def run_ftp(command, target_ip):
-    # this shit does not work.....
+    # this does not work.....
     # if you want to test, machines are fawn, access and Devel on htb.
     try:
         print(COLOURS["warn"] + " attempting to connect to ftp anonymously" + COLOURS["end"])
@@ -140,30 +175,28 @@ def get_ipv4_addresses(domain):
 def run_smbclient(target):
     # if you want to test this properly: https://app.hackthebox.com/machines/186 - box name is bastion and has open
     # smb shares.
+    command = f"smbclient -L {target}"
+    try:
+        print(f'\n {COLOURS["warn"]} smbclient will now attempt to anonymously list shares {COLOURS["end"]}')
+        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                text=True, input='\n')
+        print(COLOURS["plus"] + " smbclient found some shares! " + COLOURS["end"])
+        print(result.stdout)
 
-        command = f"smbclient -L {target}"
-        try:
-            print(f'\n {COLOURS["warn"]} smbclient will now attempt to anonymously list shares {COLOURS["end"]}')
-            result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                    text=True, input='\n')
-            print(COLOURS["plus"] + " smbclient found some shares! " + COLOURS["end"])
-            print(result.stdout)
-
-        except subprocess.CalledProcessError as e:
-            print(e.stderr)
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
 
 
-def run_http_get():
-    target_url = parse_args().target
+def run_http_get(target):
     print(COLOURS["warn"] + " http-get will start now" + COLOURS["end"])
     file_name = "./scripts/http_get_targets.txt"
     final = f"python scripts/http-get-improved.py -i scripts/http_get_targets.txt"
     if os.path.exists(file_name):
         with open(file_name, 'w') as file:
-            file.write(f"{target_url}:80")
+            file.write(f"{target}:80")
     else:
         with open(file_name, 'w') as file:
-            file.write(f"{target_url}:80")
+            file.write(f"{target}:80")
     # todo maybe the input to this command ("scripts/http_get_out"), will change later. Maybe have a dir dedicated to entire ripley.cli scan outputs?
     run_verbose_command_with_input(final, f"scripts/http_get_out", 1)
 
@@ -249,40 +282,6 @@ def run_sslscan(command):
         print(result.stdout)
     except subprocess.CalledProcessError as e:
         print(e.stderr)
-
-
-def nmap_command_logic(flags, target):
-    """
-    Takes the given flags and the target and does the logic for the nmap flags and then runs the command after it has correctly identified the flags.
-    :param flags: The Nmap flags given once the program has started running.
-    :param target: The current target.
-    """
-    # this part is logic for the nmap flags
-    output_file = next((flags[i + 1] for i, flag in enumerate(flags) if flag == "oX"), None)
-    aggressive = '1' in flags
-
-    if aggressive is False:
-        if output_file is None:
-            nmap_command = "nmap -oX temp_output.xml "
-            for flag in flags:
-                nmap_command += f"-{flag} "
-        else:
-            nmap_command = f"nmap -oX {output_file} "
-            for flag in flags:
-                if flag != f"{output_file}" and flag != 'oX':
-                    nmap_command += f"-{flag} "
-        def is_substring_repeated(main_string, substring):
-            return main_string.count(substring) > 1
-
-        if is_substring_repeated(nmap_command.strip(), "oX"):
-            print("\nYour flags:")
-            for flag in flags:
-                print(f"{flag} ")
-            raise Exception("Something has gone wrong with your nmap flags, please double check them and try again.")
-        run_nmap(f"{nmap_command}{target}".strip())
-    elif aggressive is True:
-        # TODO: add some kinda warning
-        run_nmap(f"nmap -A {target}")
 
 
 if __name__ == "__main__":
