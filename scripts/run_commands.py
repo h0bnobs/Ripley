@@ -4,9 +4,26 @@ Defines methods that take bash commands as inputs, and runs them as if they were
 import subprocess
 import time
 
-def run_command(command):
+def run_command_with_output_after(command):
     """
-    Runs the given bash command with no verbose output.
+    Runs the given bash command and prints the output once the command has finished running.
+    :param command: Bash command to run.
+    """
+    try:
+        result = subprocess.run(
+            command,
+            shell=True,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        print(f'\n{result.stdout}')
+    except subprocess.CalledProcessError as e:
+        print(e)
+
+def run_command_no_output(command):
+    """
+    Runs the given bash command with no terminal output.
     :param command: Bash command to run.
     """
     try:
@@ -20,9 +37,9 @@ def run_command(command):
     except subprocess.CalledProcessError as e:
         print(e)
 
-def run_verbose_command(command):
+def run_command_live_output(command):
     """
-    Runs the given bash command with a verbose output, as if it were run from the terminal.
+    Runs the given bash command with a live output.
     :param command: Bash command to run.
     """
     try:
@@ -39,9 +56,9 @@ def run_verbose_command(command):
         print(f"Command {command} failed with error: {e.stderr}")
 
 
-def run_verbose_command_with_input(command, input_data, delay=0.5):
+def run_command_live_output_with_input(command, input_data, delay=0.5):
     """
-    Runs the given bash command verbosely, along with an input to that command after a 0.5s delay.
+    Runs the given bash command with a live output, along with an input to that command after a 0.5s delay.
     :param delay: Optional delay in seconds for the input to be given.
     :param command: Bash command to run.
     :param input_data: The input that is to be given to the bash command.

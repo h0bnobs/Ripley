@@ -3,7 +3,6 @@ import itertools
 import sys
 import time
 import json
-
 from termcolor import colored
 
 COLOURS = {
@@ -57,14 +56,14 @@ __________.__       .__
  |____|_  /__|   __/|____/\___  > ____|
         \/   |__|             \/\/     
 
-usage: ripley_cli.py -c <config_file>
+Usage: ripley_cli.py -c <config_file>
 """
     print(colored(f'{banner_text}', "light_blue"))
 
 
 def parse_config_file(filepath):
     """
-    Reads the JSON configuration file.
+    Parses the JSON configuration file.
     :param filepath: The path to the configuration file.
     :return: The JSON of the configuration file.
     """

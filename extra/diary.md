@@ -25,3 +25,9 @@
   - If they want to use a target file they use "targets_file".
 - So I added logic to implement this in main.
 - Renamed and changed the logic of multiple_targets and single_target to run_on_multiple_targets and run_on_single_target.
+
+### Monday 14th October
+14/10/24 05:20pm
+- Changed the method names in [run_commands.py](../scripts/run_commands.py) so that they were a bit more descriptive and clear.
+- Added run_command_with_output_after in [run_commands.py](../scripts/run_commands.py)
+- Utilised run_command_with_output_after in run_smbclient 

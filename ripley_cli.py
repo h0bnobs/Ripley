@@ -119,11 +119,11 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None
 def run_nmap(target, flags):
     try:
         command = f"nmap {flags} {target}"
-        print(command)
+        # print(command)
         spinner = Spinner()
         spinner.start()
         # todo no verbose output as of now.
-        run_verbose_command(command)
+        run_command_with_output_after(command)
         spinner.stop()
     except subprocess.CalledProcessError as e:
         print(f"An error occurred while executing '{command}': {e}")
@@ -177,13 +177,12 @@ def run_smbclient(target):
     # smb shares.
     command = f"smbclient -L {target}"
     try:
-        print(f'\n {COLOURS["warn"]} smbclient will now attempt to anonymously list shares {COLOURS["end"]}')
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, input='\n')
-        print(COLOURS["plus"] + " smbclient found some shares! " + COLOURS["end"])
-        print(result.stdout)
-
+        print(f'{COLOURS["warn"]} Smbclient will now attempt to list shares. {COLOURS["end"]}')
+        run_command_with_output_after(command)
     except subprocess.CalledProcessError as e:
+        print(f"An error occurred while executing '{command}': {e}")
+        print("Error output:")
+
         print(e.stderr)
 
 
@@ -198,7 +197,7 @@ def run_http_get(target):
         with open(file_name, 'w') as file:
             file.write(f"{target}:80")
     # todo maybe the input to this command ("scripts/http_get_out"), will change later. Maybe have a dir dedicated to entire ripley.cli scan outputs?
-    run_verbose_command_with_input(final, f"scripts/http_get_out", 1)
+    run_command_live_output_with_input(final, f"scripts/http_get_out", 1)
 
 
 def run_nikto(n_command):

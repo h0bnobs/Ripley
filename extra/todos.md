@@ -13,4 +13,6 @@
 - OS detection
 - Detect whether it's a webapp test or infrastructure target
 - Concurrency
-- Change the testing methods so that they use [run_commands.py](scripts/run_commands.py)
+- Change the testing methods so that they use [run_commands.py](../scripts/run_commands.py)
+- Get the run_commands.py methods to return the results, so that custom error messages are returned e.g:
+  - If smbclient returns the string "Command 'smbclient -L 129.12.232.4' returned non-zero exit status 1." then along with this, a nice custom error message is printed as well, eg "smbclient found no shares that could be listed!" (with the colours and symbols!)
