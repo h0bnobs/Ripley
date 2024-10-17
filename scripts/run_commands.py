@@ -4,10 +4,12 @@ Defines methods that take bash commands as inputs, and runs them as if they were
 import subprocess
 import time
 
+
 def run_command_with_output_after(command):
     """
     Runs the given bash command and prints the output once the command has finished running.
     :param command: Bash command to run.
+    :return: The result object containing stdout and stderr.
     """
     try:
         result = subprocess.run(
@@ -18,8 +20,10 @@ def run_command_with_output_after(command):
             text=True,
         )
         print(f'\n{result.stdout}')
+        return result
     except subprocess.CalledProcessError as e:
-        print(e)
+        return e
+
 
 def run_command_no_output(command):
     """
@@ -36,6 +40,7 @@ def run_command_no_output(command):
         )
     except subprocess.CalledProcessError as e:
         print(e)
+
 
 def run_command_live_output(command):
     """
@@ -72,5 +77,10 @@ def run_command_live_output_with_input(command, input_data, delay=0.5):
         if process.returncode != 0:
             print(stderr_data, end='')
             raise subprocess.CalledProcessError(process.returncode, command, stderr_data)
+
+        # return both stdout and stderr as final result
+        return stdout_data + stderr_data
     except subprocess.CalledProcessError as e:
+        # print error and return
         print(f"Command {command} failed with error: {e.stderr}")
+        return e.stderr

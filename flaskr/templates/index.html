@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration</title>
+    <style>
+        /* textarea style feel like a text editor */
+        textarea {
+            width: 40%;
+            height: 200px;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f4f4f4;
+        }
+
+        button {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+<h2>Current config that the tool will use is called {{ results[0]['config_filepath'] }}:</h2>
+
+{% if results %}
+<pre>
+    {% for entry in results %}
+        {
+            "single_target": "{{ entry['single_target'] }}",
+            "multiple_targets": "{{ entry['multiple_targets'] }}",
+            "targets_file": "{{ entry['targets_file'] }}",
+            "nmap_parameters": "{{ entry['nmap_parameters'] }}",
+            "config_filepath": "{{ entry['config_filepath'] }}"
+        }{% if not loop.last %},{% endif %}
+    {% endfor %}
+</pre>
+{% else %}
+<p>No entries found in the database.</p>
+{% endif %}
+
+<!-- "Run Ripley" Button -->
+<form action="/running" method="POST">
+    <input type="hidden" name="running" value='{
+        {% for entry in results %}
+        "single_target": "{{ entry['single_target'] }}",
+        "multiple_targets": {{ entry['multiple_targets'] | tojson }},
+        "targets_file": "{{ entry['targets_file'] }}",
+        "nmap_parameters": "{{ entry['nmap_parameters'] }}",
+        "config_filepath": "{{ entry['config_filepath'] }}"
+        {% if not loop.last %},{% endif %}
+        {% endfor %}
+    }'>
+    <button type="submit">Run Ripley</button>
+</form>
+<br>
+<h2>Edit config:</h2>
+<!-- allows users to edit the config as JSON -->
+<form action="/update-config" method="POST">
+    <textarea id="config" name="config">{
+{% for entry in results %}
+    "single_target": "{{ entry['single_target'] }}",
+    "multiple_targets": {{ entry['multiple_targets'] | tojson }},
+    "targets_file": "{{ entry['targets_file'] }}",
+    "nmap_parameters": "{{ entry['nmap_parameters'] }}",
+    "config_filepath": "{{ entry['config_filepath'] }}"
+{% if not loop.last %},{% endif %}
+{% endfor %}
+}</textarea>
+    <br>
+    <button type="submit">Update Config</button>
+</form>
+
+</body>
+</html>

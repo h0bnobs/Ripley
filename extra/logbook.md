@@ -31,3 +31,9 @@
 - Changed the method names in [run_commands.py](../scripts/run_commands.py) so that they were a bit more descriptive and clear.
 - Added run_command_with_output_after in [run_commands.py](../scripts/run_commands.py)
 - Utilised run_command_with_output_after in run_smbclient 
+
+### Thursday 17th October
+17/10/24 03:00pm
+- Implemented early version of the Flask GUI
+  - Added [flaskr](../flaskr) directory and all the contents.
+  - This is a start for the gui, and lots more work needs to go into it.

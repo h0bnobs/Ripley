@@ -4,6 +4,7 @@ import sys
 import time
 import json
 from termcolor import colored
+import re
 
 COLOURS = {
     "plus": "\033[1;34m[\033[1;m\033[1;32m+\033[1;m\033[1;34m]",
@@ -44,7 +45,7 @@ class Spinner:
         sys.stdout.write('\b')
 
 
-def banner():
+def cli_banner():
     """
     Banner for the cli tool.
     """
@@ -61,12 +62,34 @@ Usage: ripley_cli.py -c <config_file>
     print(colored(f'{banner_text}', "light_blue"))
 
 
-def parse_config_file(filepath):
+def gui_banner() -> str:
+    """
+    Banner for the gui.
+    :return: The coloured banner text.
+    """
+    banner_text = r"""
+__________.__       .__                
+\______   \__|_____ |  |   ____ ___.__.
+ |       _/  \____ \|  | _/ __ <   |  |
+ |    |   \  |  |_> >  |_\  ___/\___  |
+ |____|_  /__|   __/|____/\___  > ____|
+        \/   |__|             \/\/     
+
+"""
+    return colored(f'{banner_text}', "light_blue")
+
+
+def parse_config_file(filepath: str) -> dict:
     """
     Parses the JSON configuration file.
     :param filepath: The path to the configuration file.
-    :return: The JSON of the configuration file.
+    :return: The contents of the configuration file as a dictionary.
     """
     with open(filepath, "r") as f:
         config = json.load(f)
     return config
+
+
+def remove_ansi_escape_codes(text):
+    ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
+    return ansi_escape.sub('', text)

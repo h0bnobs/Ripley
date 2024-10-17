@@ -5,7 +5,7 @@ import pexpect
 import re
 from termcolor import colored
 from scripts.run_commands import *
-from scripts.utils import COLOURS, Spinner, banner, parse_config_file
+from scripts.utils import COLOURS, Spinner, cli_banner, parse_config_file
 
 
 def parse_args():
@@ -18,13 +18,12 @@ def main():
     # Average time for threading: 12.62 seconds
     # Average time for multiprocessing: 11.63 seconds
     # Average time for xargs: 13.64 seconds
-    banner()
+    cli_banner()
     args = parse_args()
+    config = parse_config_file(args.config)
 
     if not args.config:
         raise Exception("You must use -c to specify a configuration file!")
-
-    config = parse_config_file(args.config)
 
     # process the configuration settings
     if config is None:
@@ -39,19 +38,7 @@ def main():
     if target_count != 1:
         raise Exception("You must specify exactly one of 'single_target', 'multiple_targets', or 'targets_file'.")
 
-    target_list = []
-
-    # get targets based on the specified setting
-    if single_target:
-        print(f"using {single_target} as a target from 'single_target' in {args.config}")
-        target_list.append(single_target)
-    elif multiple_targets:
-        print(f"using {multiple_targets} as targets from 'multiple_targets' in {args.config}")
-        target_list.extend(multiple_targets)
-    elif targets_file:
-        with open(targets_file, "r") as file:
-            target_list = [line.strip() for line in file if line.strip()]
-        print(f"using {target_list} as targets from 'targets_file' called {targets_file} in {args.config}")
+    target_list = get_target_list(single_target, multiple_targets, targets_file)
 
     # once target_list is filled, either run_on_multiple_targets or run_on_single_target is called based on the length
     if len(target_list) > 1:
@@ -60,6 +47,30 @@ def main():
         run_on_single_target(target_list, config)
     else:
         raise Exception("Target list empty!")
+
+
+def get_target_list(single_target: str, multiple_targets: str, targets_file: str) -> List[str]:
+    """
+    Returns the list of targets found in the config file. If multiple_targets or targets_file are used then it is a normal list, if single_target is used, then it is a list with 1 element only.
+    :param single_target: The value of the single_target setting in the config file.
+    :param multiple_targets: The value of the multiple_targets setting in the config file.
+    :param targets_file: The value of the targets_file setting in the config file.
+    :return: A list of targets found in from the config file.
+    """
+    target_list = []
+    args = parse_args()
+    # get targets based on the specified setting
+    if single_target:
+        print(f"#Debug: Using {single_target} as a target from 'single_target' in {args.config}")
+        target_list.append(single_target)
+    elif multiple_targets:
+        print(f"#Debug: Using {multiple_targets} as targets from 'multiple_targets' in {args.config}")
+        target_list.extend(multiple_targets)
+    elif targets_file:
+        with open(targets_file, "r") as file:
+            target_list = [line.strip() for line in file if line.strip()]
+        print(f"#Debug: Using {target_list} as targets from 'targets_file' called {targets_file} in {args.config}")
+    return target_list
 
 
 def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> None:
@@ -73,47 +84,46 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> N
         run_host(f"host {target}")
         nmap_flags = config['nmap_parameters']
         run_nmap(target, nmap_flags)
+        run_http_get(target)
         run_smbclient(target)
+        run_nikto(target)
         # run_showmount(target)
 
 
-def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None:
+def run_on_single_target(target_list: List[str], config: Dict[str, str]):
     """
     Runs the tool on one target given as a list.
     :param target_list: The list of targets to run.
     :param config: The configuration file as a dictionary.
-    :return: None
+    :return:
     """
     target = target_list[0]  # assuming there is only one target in the list!
     nmap_flags = config['nmap_parameters']
     # todo do something with this:!!
     output_filename = f"{target}.xml"
-
     run_host(f"host {target}")
     run_nmap(target, nmap_flags)
     run_http_get(target)
+    run_smbclient(target)
 
-    smb_client_command = "smbclient -L "
-    run_smbclient(smb_client_command)
+    run_nikto(target)
+    # host_out = run_host(f"host {target}")
+    # run_nmap(target, nmap_flags)
+    # httpget_out = run_http_get(target)
 
-    wpscan_command = "wpscan --url "
-    run_wpscan(wpscan_command)
+    # run_smbclient(target)
+    # run_wpscan(target)
+    #
+    # # showmount_command = "showmount -e "
+    # # not working run_showmount(showmount_command)
+    #
+    # # also not working
+    # # run_shc(target)
+    #
+    # ftp_command = "ftp " + target
+    # run_ftp(ftp_command, target)
+    #
 
-    # showmount_command = "showmount -e "
-    # not working run_showmount(showmount_command)
-
-    # also not working
-    # run_shc(target)
-
-    ssl_scan_command = "sslscan --url "
-    run_sslscan(ssl_scan_command)
-
-    ftp_command = "ftp " + target
-    run_ftp(ftp_command, target)
-
-    nikto_command = "nikto -host " + target
-    print(nikto_command)
-    run_nikto(nikto_command)
 
 
 def run_nmap(target, flags):
@@ -122,13 +132,12 @@ def run_nmap(target, flags):
         # print(command)
         spinner = Spinner()
         spinner.start()
-        # todo no verbose output as of now.
-        run_command_with_output_after(command)
+        result = run_command_with_output_after(command)
         spinner.stop()
+        return result.stdout
     except subprocess.CalledProcessError as e:
-        print(f"An error occurred while executing '{command}': {e}")
-        print("Error output:")
-        print(e.stderr)
+        error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
+        return error_message
 
 
 def run_ftp(command, target_ip):
@@ -178,12 +187,11 @@ def run_smbclient(target):
     command = f"smbclient -L {target}"
     try:
         print(f'{COLOURS["warn"]} Smbclient will now attempt to list shares. {COLOURS["end"]}')
-        run_command_with_output_after(command)
+        result = run_command_with_output_after(command)
+        return result.stdout
     except subprocess.CalledProcessError as e:
-        print(f"An error occurred while executing '{command}': {e}")
-        print("Error output:")
-
-        print(e.stderr)
+        error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
+        return error_message
 
 
 def run_http_get(target):
@@ -196,27 +204,19 @@ def run_http_get(target):
     else:
         with open(file_name, 'w') as file:
             file.write(f"{target}:80")
-    # todo maybe the input to this command ("scripts/http_get_out"), will change later. Maybe have a dir dedicated to entire ripley.cli scan outputs?
-    run_command_live_output_with_input(final, f"scripts/http_get_out", 1)
+    result = run_command_live_output_with_input(final, f"scripts/http_get_out", 1)
+    return result
 
 
-def run_nikto(n_command):
+def run_nikto(target):
+    command = f"nikto {target}"
     try:
-        print('\n' + COLOURS["warn"] + " nikto now running. This will take a long time." + COLOURS["end"])
-        process = subprocess.Popen(n_command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        while True:
-            output = process.stdout.readline()
-            if output == "" and process.poll() is not None:
-                break
-            if output:
-                print(output.strip())
-
-        stderr = process.communicate()[1]
-        if process.returncode != 0:
-            print(stderr.strip())
-
+        print(f'{COLOURS["warn"]} Nikto will now attempt to list shares. {COLOURS["end"]}')
+        result = run_command_with_output_after(command)
+        return result.stdout
     except subprocess.CalledProcessError as e:
-        print(e.stderr)
+        error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
+        return error_message
 
 
 def run_showmount(target):
@@ -230,25 +230,15 @@ def run_showmount(target):
         print(e.stderr)
 
 
-def run_wpscan(command):
-    target_url = parse_args().target
-    final = command + target_url + " --random-user-agent"
-    print(COLOURS["warn"] + " wpscan will now attempt to scan the remote host: " + target_url + COLOURS["end"])
+def run_wpscan(target):
+    command = f'wpscan {target} --random-user-agent'
+    print(COLOURS["warn"] + " wpscan will now attempt to scan the remote host: " + target + COLOURS["end"])
     try:
-        process = subprocess.Popen(final, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        while True:
-            output = process.stdout.readline()
-            if output == "" and process.poll() is not None:
-                break
-            if output:
-                print(output.strip())
-
-        stderr = process.communicate()[1]
-        if process.returncode != 0:
-            print(stderr.strip())
-
+        result = run_command_with_output_after(command)
+        return result.stdout
     except subprocess.CalledProcessError as e:
-        print(e.stderr)
+        error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
+        return error_message
 
 
 def run_host(command):
