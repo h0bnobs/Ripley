@@ -5,6 +5,7 @@ import time
 import json
 from termcolor import colored
 import re
+import os
 
 COLOURS = {
     "plus": "\033[1;34m[\033[1;m\033[1;32m+\033[1;m\033[1;34m]",
@@ -90,6 +91,24 @@ def parse_config_file(filepath: str) -> dict:
     return config
 
 
-def remove_ansi_escape_codes(text):
+def remove_ansi_escape_codes(text: str) -> str:
+    """
+    Removes the ANSI escape codes from a string for nice outputs.
+    :param text: The text to remove ANSI from.
+    :return: The result string with no ANSI
+    """
     ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
     return ansi_escape.sub('', text)
+
+
+def find_full_filepath(directory: str, filename: str):
+    """
+
+    :param directory:
+    :param filename:
+    :return:
+    """
+    for root, dirs, files in os.walk(directory):
+        if filename in files:
+            return os.path.join(root, filename)
+    return None

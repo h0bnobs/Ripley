@@ -5,7 +5,7 @@ import subprocess
 import time
 
 
-def run_command_with_output_after(command):
+def run_command_with_output_after(command: str) ->  subprocess.CompletedProcess[str] | subprocess.CalledProcessError:
     """
     Runs the given bash command and prints the output once the command has finished running.
     :param command: Bash command to run.
@@ -42,26 +42,37 @@ def run_command_no_output(command):
         print(e)
 
 
-def run_command_live_output(command):
+def run_command_live_output(command: str) -> str:
     """
-    Runs the given bash command with a live output.
+    Runs the given bash command with live output to the terminal.
     :param command: Bash command to run.
+    :return: The stdout output if successful, otherwise raises an error with stderr.
     """
     try:
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                   text=True)
+        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        stdout_output = []
         for stdout_line in iter(process.stdout.readline, ""):
-            print(stdout_line, end='')
+            print(stdout_line, end='')  # Print live output
+            stdout_output.append(stdout_line)  # Capture output
+
         process.stdout.close()
         process.wait()
+
         if process.returncode != 0:
-            stderr_output = process.stderr.read()
+            stderr_output = process.stderr.read()  # Capture stderr
             raise subprocess.CalledProcessError(process.returncode, command, stderr_output)
+
+        # Join stdout and return as a string
+        return ''.join(stdout_output)
+
     except subprocess.CalledProcessError as e:
-        print(f"Command {command} failed with error: {e.stderr}")
+        # Raise an error with the stderr output
+        error_msg = f"Command {command} failed with error:\n{e.stderr}"
+        raise RuntimeError(error_msg)
 
 
-def run_command_live_output_with_input(command, input_data, delay=0.5):
+def run_command_live_output_with_input(command, input_data, delay=0.5) -> subprocess.Popen[str | bytes]:
     """
     Runs the given bash command with a live output, along with an input to that command after a 0.5s delay.
     :param delay: Optional delay in seconds for the input to be given.
@@ -79,7 +90,11 @@ def run_command_live_output_with_input(command, input_data, delay=0.5):
             raise subprocess.CalledProcessError(process.returncode, command, stderr_data)
 
         # return both stdout and stderr as final result
-        return stdout_data + stderr_data
+        if process.returncode != 0:
+            stderr_output = process.stderr.read()
+            raise subprocess.CalledProcessError(process.returncode, command, stderr_output)
+        else:
+            return process
     except subprocess.CalledProcessError as e:
         # print error and return
         print(f"Command {command} failed with error: {e.stderr}")

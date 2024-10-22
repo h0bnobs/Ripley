@@ -6,7 +6,7 @@ from flask import Flask, render_template, request, redirect, url_for
 from flaskr.db import get_db, init_db
 from ripley_cli import get_target_list
 from flaskr.run_tool_for_gui import run_on_multiple_targets, run_on_single_target
-from scripts.utils import parse_config_file
+from scripts.utils import parse_config_file, gui_banner
 
 # flask --app flaskr init-db
 # flask --app flaskr run --debug
@@ -92,7 +92,7 @@ def create_app(test_config=None):
 
         # result = run_nmap(target_list[0], "-Pn")
         # return ""
-        return f"<pre>{result}</pre>"
+        return f"<pre>{gui_banner()}\n{result}</pre>"
 
     from . import db
     db.init_app(app)

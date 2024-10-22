@@ -1,4 +1,4 @@
-# Diary
+# Logbook
 
 ### Thursday 10th October
 10/10/24 04:30pm
@@ -37,3 +37,15 @@
 - Implemented early version of the Flask GUI
   - Added [flaskr](../flaskr) directory and all the contents.
   - This is a start for the gui, and lots more work needs to go into it.
+
+### Tuesday 22nd October
+22/10/24 03:00pm
+- More work on the GUI. [Screenshot](screenshots/22-10-24.png)
+- Most changes were in [run_tool_for_gui.py](../flaskr/run_tool_for_gui.py), [run_commands.py](../scripts/run_commands.py), [ripley_cli.py](../ripley_cli.py) and the [index](../flaskr/templates/index.html).
+- Added the following tools/checks:
+  - Get the contents of robots.txt file.
+  - Use the dnsrecon tool to get subdomains.
+  - Get a screenshot of the webpage.
+- Fixed run_smbclient and run_ftp in [ripley_cli.py](../ripley_cli.py)
+- Changed return types for some methods in [run_commands.py](../scripts/run_commands.py)
+- 

@@ -9,6 +9,7 @@
 - Custom scripts/plugins
 - Add verbose levels to cli version?
 - Get all the tools needed beforehand?
+- Some kind of information storage about the target. Suggestions based upon this information.
 
 ## Lower level stuff:
 - OS detection
@@ -23,3 +24,4 @@
 - Drag and drop config files
 - The option to save configs and reuse them
 - Better way to select/inpput options to edit the config file
+- When the config file is updated in the gui, its updated in project root dir

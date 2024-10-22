@@ -1,11 +1,16 @@
 import argparse
+import ftplib
 import os
+from subprocess import CompletedProcess
 from typing import List, Dict
 import pexpect
 import re
 from termcolor import colored
-from scripts.run_commands import *
-from scripts.utils import COLOURS, Spinner, cli_banner, parse_config_file
+import subprocess
+from scripts.run_commands import run_command_with_output_after, run_command_live_output_with_input, run_command_live_output
+from scripts.utils import COLOURS, Spinner, cli_banner, parse_config_file, find_full_filepath
+from selenium import webdriver
+from webdriver_manager.chrome import ChromeDriverManager
 
 
 def parse_args():
@@ -140,32 +145,26 @@ def run_nmap(target, flags):
         return error_message
 
 
-def run_ftp(command, target_ip):
-    # this does not work.....
+def run_ftp(target: str) -> bool:
+    """
+    Tries to connect to the target and login to ftp anonymously.
+    :param target: The target FTP server.
+    :return: True if anonymous connection was successful, False otherwise.
+    """
     # if you want to test, machines are fawn, access and Devel on htb.
     try:
-        print(COLOURS["warn"] + " attempting to connect to ftp anonymously" + COLOURS["end"])
-        child = pexpect.spawn(command)
-
-        child.expect_exact("Connected to " + target_ip + ".")
-        child.expect_exact("220 Microsoft FTP Service")
-
-        expect_name = "Name (" + target_ip + ":" + os.getlogin() + "):"
-        child.expect_exact(expect_name)
-        child.sendline('anonymous')
-
-        child.expect_exact("331 Anonymous access allowed, send identity (e-mail name) as password.")
-        child.sendline('')
-        response = child.expect_exact("230 User logged in.")
-
-        if response == 0:
-            print(COLOURS["plus"] + " ftp login successful!" + COLOURS["end"])
-        else:
-            print(COLOURS["cross"] + " anonymous login failed." + COLOURS["end"])
-
-    except pexpect.exceptions.ExceptionPexpect as e:
-        print(COLOURS["warn"] + " cannot connect to ftp " + COLOURS["end"])
-        print(str(e))
+        ftp = ftplib.FTP(timeout=10)
+        ftp.connect(target)
+        ftp.login('anonymous', '')
+        print(f'{COLOURS["star"]} Anonymous FTP login successful!')
+        ftp.quit()
+        return True
+    except ftplib.error_perm as e:
+        print(f'{COLOURS["warn"]} Anonymous FTP login not allowed!')
+        return False
+    except Exception as e:
+        print(f'Failed to connect to ftp server!')
+        return False
 
 
 def get_ipv4_addresses(domain):
@@ -187,8 +186,15 @@ def run_smbclient(target):
     command = f"smbclient -L {target}"
     try:
         print(f'{COLOURS["warn"]} Smbclient will now attempt to list shares. {COLOURS["end"]}')
-        result = run_command_with_output_after(command)
-        return result.stdout
+        # result = run_command_with_output_after(command)
+        result = run_command_live_output_with_input(command, '\n')
+        if result is not None:
+            if result.returncode == 1:
+                return result.stderr
+            else:
+                return result.stdout
+        else:
+            return f'{COLOURS["warn"]} smbclient failed to list shares. {COLOURS["end"]}'
     except subprocess.CalledProcessError as e:
         error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
         return error_message
@@ -205,14 +211,18 @@ def run_http_get(target):
         with open(file_name, 'w') as file:
             file.write(f"{target}:80")
     result = run_command_live_output_with_input(final, f"scripts/http_get_out", 1)
-    return result
+    if result.returncode != 0:
+        return result
+    else:
+        return f'{COLOURS["cross"]} http-get encountered an error. Are you sure the target is correct and is hosting a valid webservice?\n'
 
 
 def run_nikto(target):
-    command = f"nikto {target}"
+    command = f"nikto -host {target}"
     try:
-        print(f'{COLOURS["warn"]} Nikto will now attempt to list shares. {COLOURS["end"]}')
-        result = run_command_with_output_after(command)
+        print(f'{COLOURS["warn"]} Nikto now running. {COLOURS["end"]}')
+        result = run_command_live_output(command)
+        # result = run_command_with_output_after(command)
         return result.stdout
     except subprocess.CalledProcessError as e:
         error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
@@ -230,6 +240,40 @@ def run_showmount(target):
         print(e.stderr)
 
 
+def get_robots_file(target: str) -> CompletedProcess[str]:
+    """
+    Gets the robots.txt file from the target website.
+    :param target: The target server.
+    :return: Returns the completed process.
+    """
+    return run_command_with_output_after(f'curl https://{target}/robots.txt')
+
+
+def run_dns_recon(target: str):
+    """
+
+    :param target:
+    :return:
+    """
+    if target.startswith('www.'):
+        return run_command_live_output(f"dnsrecon -d {target.replace('www.', '', 1)}")
+    else:
+        return run_command_live_output(target)
+
+def get_screenshot(target: str) -> str:
+    """
+    Gets a screenshot of the webpage and stores it in the output directory.
+    :param target: The target webpage.
+    :return: The full filepath of the screenshot.
+    """
+    os.makedirs("output", exist_ok=True)
+    chromedriver = webdriver.Chrome()
+    chromedriver.get(f'https://{target}')
+    chromedriver.save_screenshot(f'output/{target}.png')
+    chromedriver.quit()
+    return find_full_filepath('output', f'{target}.png')
+
+
 def run_wpscan(target):
     command = f'wpscan {target} --random-user-agent'
     print(COLOURS["warn"] + " wpscan will now attempt to scan the remote host: " + target + COLOURS["end"])
@@ -241,13 +285,16 @@ def run_wpscan(target):
         return error_message
 
 
-def run_host(command):
-    try:
-        result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True)
-        print(colored(result.stdout, "red"))
-    except subprocess.CalledProcessError as e:
-        print(e.stderr)
+def run_host(target):
+    command = f'host {target}'
+    if target.startswith('www.'):
+        one = run_command_with_output_after(f'host {target.split("www.")[1]}')
+        two = run_command_with_output_after(command)
+        return f'{one.stdout}\n{two.stdout}'
+    else:
+        result = run_command_with_output_after(command)
+        print(result.stdout)
+        return result.stdout
 
 
 def run_shc(target_url):
