@@ -1,0 +1,26 @@
+/* Optional: Styling to make it look nicer */
+.collapsible {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 10px;
+    background-color: #e0e0e0;
+    border: 1px solid #ccc;
+    margin-top: 10px;
+}
+
+.content {
+    padding: 10px;
+    border: 1px solid #ddd;
+    margin-top: -1px; /* Avoids gap between button and content */
+    background-color: #f9f9f9;
+}
+
+/* Outer content initially closed */
+.outer-content {
+    display: none; /* Outer content is collapsed initially */
+}
+
+/* Inner contents are open by default */
+.inner-content {
+    display: block; /* Inner collapsibles are open by default */
+}

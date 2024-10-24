@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiple Scan Results</title>
+    <link rel="stylesheet" href="../static/style/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../static/js/multiple_targets_result.js"></script>
+</head>
+<body>
+<h1>Scan Results for Multiple Targets</h1>
+
+{% for target, result in results.items() %}
+<div class="collapsible outer-collapsible">Scan Results for Target: {{ target }}</div>
+<div class="content outer-content">
+    <div class="results">
+
+        <div class="collapsible">Host Command Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['host_output'] }}</pre>
+        </div>
+
+        <div class="collapsible">Nmap Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['nmap_output'] }}</pre>
+        </div>
+
+        <div class="collapsible">SMBClient Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['smbclient_output'] }}</pre>
+        </div>
+
+        <div class="collapsible">FTP Result</div>
+        <div class="content inner-content">
+            <pre>{{ result['ftp_result'] }}</pre>
+        </div>
+
+        <div class="collapsible">Screenshot</div>
+        <div class="content inner-content">
+            {% if result['screenshot'] != 'No screenshot available' %}
+            <img src="{{ result['screenshot'] }}" alt="Screenshot of target" style="width: 30%;">
+            {% else %}
+            <p>No screenshot available</p>
+            {% endif %}
+        </div>
+
+        <div class="collapsible">Robots.txt Contents:</div>
+        <div class="content inner-content">
+            <pre>{{ result['robots_file'] }}</pre>
+        </div>
+
+    </div>
+</div>
+{% endfor %}
+
+
+</body>
+</html>

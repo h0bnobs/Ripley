@@ -1,7 +1,7 @@
 import json
 import os
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 
 from flaskr.db import get_db, init_db
 from ripley_cli import get_target_list
@@ -68,6 +68,29 @@ def create_app(test_config=None):
         config_entries = db.execute("SELECT * FROM config").fetchall()
         return redirect(url_for('index'))
 
+    # route for the results page
+    @app.route('/results')
+    def results():
+        # get the results from the session
+        result = session.get('scan_results', None)
+
+        if not result:
+            return "No results to display!"
+
+        # Render the results in the template, passing both the target and result
+        return render_template('single_target_result.html', target=result['target'], result=result['result'])
+
+    @app.route('/multiple-results')
+    def multiple_results():
+        # get the results from the session
+        result = session.get('scan_results', None)
+
+        if not result:
+            return "No results to display!"
+
+        # Render the results in the template, passing the results for all targets
+        return render_template('multiple_targets_result.html', results=result)
+
     # Route for the "Run Ripley" button
     @app.route('/running', methods=['POST'])
     def run_ripley():
@@ -84,15 +107,21 @@ def create_app(test_config=None):
 
         # once target_list is filled, either run_on_multiple_targets or run_on_single_target is called based on the length
         if len(target_list) > 1:
-            result = run_on_multiple_targets(target_list, config)
+            results = run_on_multiple_targets(target_list, config)
+            session['scan_results'] = results  # Store as a single dict for multiple targets
+            return redirect(url_for('multiple_results'))
         elif len(target_list) == 1:
             result = run_on_single_target(target_list, config)
+            session['scan_results'] = result
+            return redirect(url_for('results'))
         else:
             raise Exception("Target list empty!")
 
         # result = run_nmap(target_list[0], "-Pn")
         # return ""
-        return f"<pre>{gui_banner()}\n{result}</pre>"
+
+
+        # return f"<pre>{gui_banner()}\n{result}</pre>"
 
     from . import db
     db.init_app(app)

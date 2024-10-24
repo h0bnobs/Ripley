@@ -48,4 +48,10 @@
   - Get a screenshot of the webpage.
 - Fixed run_smbclient and run_ftp in [ripley_cli.py](../ripley_cli.py)
 - Changed return types for some methods in [run_commands.py](../scripts/run_commands.py)
-- 
+
+### Thursday 24th October
+24/10/24 03:20pm
+- More work on the GUI. [Screenshot 1](screenshots/24-10-24_01.png) & [Screenshot 2](screenshots/24-10-24_02.png)
+  - Added collapsible report elements so that it's a bit more organised.
+  - Added [multiple_targets_result.html](../flaskr/templates/multiple_targets_result.html) & [single_target_result.html](../flaskr/templates/single_target_result.html) for organised results per the scan.
+  - Had to rework [the init file](../flaskr/__init__.py) & [run_tool_for_gui](../flaskr/run_tool_for_gui.py) so that the scan results are handled and displayed correctly!

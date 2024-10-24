@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Results</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <link rel="stylesheet" href="../static/style/style.css">
+</head>
+<body>
+<h1>Scan Results</h1>
+
+<!-- Outer collapsible for the entire target -->
+<div class="collapsible outer-collapsible">Scan Results for Target: {{ target }}</div>
+<div class="content outer-content">
+    <div class="results">
+
+        <div class="collapsible">Host Command Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['host_output'] }}</pre>
+        </div>
+
+        <div class="collapsible">Nmap Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['nmap_output'] }}</pre>
+        </div>
+
+        <div class="collapsible">SMBClient Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['smbclient_output'] }}</pre>
+        </div>
+
+        <div class="collapsible">FTP Result</div>
+        <div class="content inner-content">
+            <pre>{{ result['ftp_result'] }}</pre>
+        </div>
+
+        <div class="collapsible">Screenshot</div>
+        <div class="content inner-content">
+            {% if result['screenshot'] != 'No screenshot available' %}
+            <img src="{{ result['screenshot'] }}" alt="Screenshot of target">
+            {% else %}
+            <p>No screenshot available</p>
+            {% endif %}
+        </div>
+
+    </div>
+</div>
+
+<script src="../static/js/single_target_result.js"></script>
+
+
+</body>
+</html>
