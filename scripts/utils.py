@@ -80,6 +80,27 @@ __________.__       .__
     return colored(f'{banner_text}', "light_blue")
 
 
+def robots_string() -> str:
+    """
+    The robots.txt string.
+    :return: The robots.txt string.
+    """
+    return """
+__________.__       .__          
+\______   \__|_____ |  |   ____ ___.__.
+ |       _/  \____ \|  | _/ __ <   |  |
+ |    |   \  |  |_> >  |_\  ___/\___  |
+ |____|_  /__|   __/|____/\___  > ____|
+        \/   |__|             \/\/     
+
+
+User-agent: *
+Disallow: /
+
+https://github.com/h0bnobs/Ripley
+I love beesec
+"""
+
 def parse_config_file(filepath: str) -> dict:
     """
     Parses the JSON configuration file.

@@ -55,3 +55,10 @@
   - Added collapsible report elements so that it's a bit more organised.
   - Added [multiple_targets_result.html](../flaskr/templates/multiple_targets_result.html) & [single_target_result.html](../flaskr/templates/single_target_result.html) for organised results per the scan.
   - Had to rework [the init file](../flaskr/__init__.py) & [run_tool_for_gui](../flaskr/run_tool_for_gui.py) so that the scan results are handled and displayed correctly!
+
+### Thursday 7th November
+07/11/24 11:20am
+- Added [chatgpt_call.py](../scripts/chatgpt_call.py) that takes the output of the scan and sends it to the OpenAI API to get AI generated advice/insights.
+- Added logic for the database.
+- Added logic for multiple and single targets in [init](../flaskr/__init__.py).
+- 

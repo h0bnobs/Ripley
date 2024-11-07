@@ -1,10 +1,12 @@
 import argparse
 import ftplib
 import os
-from subprocess import CompletedProcess
-from typing import List, Dict
+from subprocess import CompletedProcess, CalledProcessError
+from typing import List, Dict, Type
 import pexpect
 import re
+
+from selenium.common import WebDriverException
 from termcolor import colored
 import subprocess
 from scripts.run_commands import run_command_with_output_after, run_command_live_output_with_input, run_command_live_output
@@ -240,13 +242,25 @@ def run_showmount(target):
         print(e.stderr)
 
 
-def get_robots_file(target: str) -> CompletedProcess[str]:
+def get_robots_file(target: str) -> CompletedProcess[str] | CalledProcessError | Type[CompletedProcess]:
     """
     Gets the robots.txt file from the target website.
     :param target: The target server.
     :return: Returns the completed process.
     """
-    return run_command_with_output_after(f'curl https://{target}/robots.txt')
+    attempts = [
+        f'https://{target}/robots.txt',
+        f'http://{target}/robots.txt',
+    ]
+    for url in attempts:
+        try:
+            r = run_command_with_output_after(f'curl {url}')
+            if r.returncode == 0:
+                return r
+        except subprocess.TimeoutExpired:
+            continue
+    return CompletedProcess
+    # return run_command_with_output_after(f'curl https://{target}/robots.txt')
 
 
 def run_dns_recon(target: str):
@@ -267,11 +281,28 @@ def get_screenshot(target: str) -> str:
     :return: The full filepath of the screenshot.
     """
     os.makedirs("output", exist_ok=True)
-    chromedriver = webdriver.Chrome()
-    chromedriver.get(f'https://{target}')
-    chromedriver.save_screenshot(f'output/{target}.png')
+    attempts = [
+        f'https://{target}',
+        f'http://{target}',
+        f'http://{target}:80',
+    ]
+    screenshot_path = ""
+    for url in attempts:
+        try:
+            chromedriver = webdriver.Chrome()
+            chromedriver.get(url)
+            screenshot_path = f'output/{target}.png'
+            chromedriver.save_screenshot(screenshot_path)
+            break  # Exit the loop if the connection is successful
+        except WebDriverException:
+            continue  # Try the next URL if there’s a connection issue
+
     chromedriver.quit()
-    return find_full_filepath('output', f'{target}.png')
+
+    if screenshot_path:
+        return find_full_filepath('output', f'{target}.png')
+    else:
+        raise Exception(f"Could not connect to {target} using any protocol.")
 
 
 def run_wpscan(target):

@@ -8,3 +8,4 @@ customtkinter
 python-libnmap
 click
 Flask
+openai

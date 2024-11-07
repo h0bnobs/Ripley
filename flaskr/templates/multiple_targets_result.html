@@ -21,6 +21,11 @@
             <pre>{{ result['host_output'] }}</pre>
         </div>
 
+        <div class="collapsible">DnsRecon Command Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['dns_recon_output'] }}</pre>
+        </div>
+
         <div class="collapsible">Nmap Output</div>
         <div class="content inner-content">
             <pre>{{ result['nmap_output'] }}</pre>
@@ -39,7 +44,7 @@
         <div class="collapsible">Screenshot</div>
         <div class="content inner-content">
             {% if result['screenshot'] != 'No screenshot available' %}
-            <img src="{{ result['screenshot'] }}" alt="Screenshot of target" style="width: 30%;">
+            <img src="{{ result['screenshot'] }}" alt="Screenshot of target" style="width: 20%;">
             {% else %}
             <p>No screenshot available</p>
             {% endif %}
@@ -48,6 +53,11 @@
         <div class="collapsible">Robots.txt Contents:</div>
         <div class="content inner-content">
             <pre>{{ result['robots_file'] }}</pre>
+        </div>
+
+        <div class="collapsible">Recommendations:</div>
+        <div class="content inner-content">
+            <pre>{{ result['ai_advice'] }}</pre>
         </div>
 
     </div>

@@ -17,6 +17,7 @@
 - Detect whether it's a webapp test or infrastructure target
 - For the robots file, sort it into allow and disallow and get AI to point out the most interesting parts. 
 - Remove 'multiple_targets' from config.
+- If target file is used, list the targets in the gui landing page.
 
 ## GUI todos:
 - Drag and drop config files
