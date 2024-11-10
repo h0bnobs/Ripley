@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Previous Scans</title>
+    <style>
+        table {
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: center;
+        }
+        .button-cell {
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h2>Previous Scans</h2>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Target</th>
+                <th>Scan start time</th>
+                <th>Scan number</th>
+                <th class="button-cell" style="border: none"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for result in results %}
+            <tr>
+                <td>{{ result['target'] }}</td>
+                <td>{{ result['scan_start_time'] }}</td>
+                <td>{{ result['scan_num'] }}</td>
+                <td class="button-cell"><button>View</button></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

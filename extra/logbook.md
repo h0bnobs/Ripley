@@ -61,4 +61,14 @@
 - Added [chatgpt_call.py](../scripts/chatgpt_call.py) that takes the output of the scan and sends it to the OpenAI API to get AI generated advice/insights.
 - Added logic for the database.
 - Added logic for multiple and single targets in [init](../flaskr/__init__.py).
-- 
+
+### Sunday 10th November
+10/11/24 01:40pm
+- Currently, for a scan against 5 targets, it costs $0.40 for a call to gpt4.0, so I have switched to 3.5 for testing.
+- Added Concurrency in [the multiple targets gui script](../flaskr/run_tool_for_gui.py).
+  - I ran some tests so before when scanning 2 targets it took 82 seconds, and now it takes 43.
+  - For a scan against 5 targets it took 172 seconds and now takes 43 seconds.
+- Added some [logic](../flaskr/static/js/index.js) for the [homepage](../flaskr/templates/index.html) so that if the user is using a targets file, some of the contents are displayed and they can also view their entire targets file in the browser.
+- Also added [the previous scans page](../flaskr/templates/previous_scans.html) that uses the db to display the previous scans.
+  - Currently, it is set up for single scans only. I need to think of a way to preperly display scans that were against more than 1 target.
+- Added a back button for all results pages.

@@ -9,7 +9,8 @@ import re
 from selenium.common import WebDriverException
 from termcolor import colored
 import subprocess
-from scripts.run_commands import run_command_with_output_after, run_command_live_output_with_input, run_command_live_output
+from scripts.run_commands import run_command_with_output_after, run_command_live_output_with_input, \
+    run_command_live_output
 from scripts.utils import COLOURS, Spinner, cli_banner, parse_config_file, find_full_filepath
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
@@ -97,12 +98,11 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> N
         # run_showmount(target)
 
 
-def run_on_single_target(target_list: List[str], config: Dict[str, str]):
+def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None:
     """
     Runs the tool on one target given as a list.
     :param target_list: The list of targets to run.
     :param config: The configuration file as a dictionary.
-    :return:
     """
     target = target_list[0]  # assuming there is only one target in the list!
     nmap_flags = config['nmap_parameters']
@@ -132,11 +132,15 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]):
     #
 
 
-
-def run_nmap(target, flags):
+def run_nmap(target: str, flags: str) -> str:
+    """
+    Runs the nmap tool on the target.
+    :param target: The target to run nmap on.
+    :param flags: The flags to use with nmap.
+    :return: The output of the nmap tool as a string or a CalledProcessError.
+    """
     try:
         command = f"nmap {flags} {target}"
-        # print(command)
         spinner = Spinner()
         spinner.start()
         result = run_command_with_output_after(command)
@@ -161,10 +165,7 @@ def run_ftp(target: str) -> bool:
         print(f'{COLOURS["star"]} Anonymous FTP login successful!')
         ftp.quit()
         return True
-    except ftplib.error_perm as e:
-        print(f'{COLOURS["warn"]} Anonymous FTP login not allowed!')
-        return False
-    except Exception as e:
+    except (ftplib.error_perm, Exception) as e:
         print(f'Failed to connect to ftp server!')
         return False
 
@@ -263,16 +264,17 @@ def get_robots_file(target: str) -> CompletedProcess[str] | CalledProcessError |
     # return run_command_with_output_after(f'curl https://{target}/robots.txt')
 
 
-def run_dns_recon(target: str):
+def run_dns_recon(target: str) -> str:
     """
-
-    :param target:
-    :return:
+    Runs the dnsrecon tool on the target.
+    :param target: The target domain.
+    :return: The live output of the dnsrecon tool.
     """
     if target.startswith('www.'):
         return run_command_live_output(f"dnsrecon -d {target.replace('www.', '', 1)}")
     else:
-        return run_command_live_output(target)
+        return run_command_live_output(f'dnsrecon -d {target}')
+
 
 def get_screenshot(target: str) -> str:
     """

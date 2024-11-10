@@ -12,7 +12,7 @@ def make_api_call(results: dict[str, str]) -> str:
     :return:
     """
     completion = client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-3.5-turbo", # gpt-3.5-turbo is the cheapest!
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {

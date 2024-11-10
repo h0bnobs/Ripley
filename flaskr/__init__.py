@@ -12,12 +12,14 @@ Modules:
 """
 import json
 import os
+import time
 
 from flask import Flask, render_template, request, redirect, url_for, session, Response
 
 from flaskr.db import get_db, init_db
 from ripley_cli import get_target_list
 from flaskr.run_tool_for_gui import run_on_multiple_targets, run_on_single_target
+from scripts.run_commands import run_command_no_output
 from scripts.utils import parse_config_file, gui_banner, robots_string
 
 # flask --app flaskr init-db
@@ -71,8 +73,29 @@ def create_app(test_config=None) -> Flask:
         db = get_db()
         config_entries = db.execute("SELECT * FROM config").fetchall()
         results = [dict(entry) for entry in config_entries]
+        targets = results[0]['single_target'] or open(results[0]['targets_file']).readlines() if results[0]['targets_file'] else None
         print(results)
-        return render_template('index.html', results=results)
+        if targets is None:
+            return render_template('index.html', results=results)
+        else:
+            return render_template('index.html', results=results, targets=targets)
+
+    @app.route('/view-targets-file')
+    def view_targets_file():
+        """
+        Serves the targets file for viewing in the browser.
+        :return: The content of the targets file.
+        """
+        targets_filepath = request.args.get('filepath')
+        if not targets_filepath:
+            return "No targets file specified!", 400
+
+        try:
+            with open(targets_filepath, 'r') as file:
+                content = file.read()
+            return Response(content, mimetype='text/plain')
+        except FileNotFoundError:
+            return "Targets file not found!", 404
 
     @app.route('/robots.txt')
     def robots():
@@ -81,6 +104,17 @@ def create_app(test_config=None) -> Flask:
         :return: The robots.txt file.
         """
         return Response(robots_string(), mimetype='text/plain')
+
+    @app.route('/previous-scans')
+    def previous_scans():
+        """
+        The route for viewing previous scans.
+        :return: The render template of the previous scans html file.
+        """
+        db = get_db()
+        scan_results = db.execute("SELECT * FROM scan_results").fetchall()
+        results = [dict(row) for row in scan_results]
+        return render_template('previous_scans.html', results=results)
 
     @app.route('/update-config', methods=['POST'])
     def update_config() -> Response:
@@ -179,7 +213,9 @@ def create_app(test_config=None) -> Flask:
 
         # once target_list is filled, either run_on_multiple_targets or run_on_single_target is called based on the length
         if len(target_list) > 1:
+            start = time.time()
             results_files = run_on_multiple_targets(target_list, config)
+            print(f'########### {time.time() - start} seconds ###########')
             session['scan_results_files'] = results_files  # stores list of file paths in session
             return redirect(url_for('multiple_results'))
         elif len(target_list) == 1:

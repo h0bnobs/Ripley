@@ -4,13 +4,17 @@ This script contains methods to run the tool for the gui. They are modified meth
 import json
 import os
 import tempfile
+import time
 from typing import List, Dict
 
+from flaskr import get_db
 from ripley_cli import run_host, run_nmap, run_http_get, run_smbclient, run_nikto, run_ftp, get_screenshot, \
     get_robots_file, run_dns_recon
 from scripts.chatgpt_call import make_api_call
 from scripts.run_commands import run_command_no_output
 from scripts.utils import remove_ansi_escape_codes, gui_banner, COLOURS
+import concurrent.futures
+from flask import current_app
 
 
 def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> List[str]:
@@ -18,38 +22,63 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
     Runs the tool for multiple targets given as a list.
     :param target_list: The list of targets to run.
     :param config: The configuration file as a dictionary.
-    :return: The concatenated string outputs of the tools.
+    :return: A list of paths to the temp files generated.
     """
-    file_paths = []
-    for target in target_list:
-        nmap_flags = config['nmap_parameters']
-        host_output = run_host(target)
-        nmap_output = run_nmap(target, nmap_flags)
-        smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
-        ftp_allowed = run_ftp(target)
-        ftp_string = f"Anonymous FTP login {'allowed' if ftp_allowed else 'not allowed'}"
-        screenshot_filepath = get_screenshot(target)
-        if screenshot_filepath:
-            os.makedirs('flaskr/static/screenshots', exist_ok=True)
-            run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
-        robots_output = get_robots_file(target).stdout
-        dns_recon_output = run_dns_recon(target)
-        result = {
-            'target': target,
-            'host_output': host_output,
-            'dns_recon_output': dns_recon_output,
-            'nmap_output': nmap_output,
-            'smbclient_output': smbclient_output,
-            'ftp_result': ftp_string,
-            'screenshot': f'static/screenshots/{target}.png' if screenshot_filepath else "[*] Couldn't get a screenshot of the target!",
-            'robots_file': robots_output
-        }
-        result["ai_advice"] = make_api_call(result)
-        temp_file_path = save_scan_results_to_tempfile(result)
-        file_paths.append(temp_file_path)
+    def process_target(app, target: str) -> str:
+        """
+        Processes a single target.
+        :param app: The flask app.
+        :param target: The target to process.
+        :return: The path to the temp file as a string.
+        """
+        with app.app_context():
+            nmap_flags = config['nmap_parameters']
+            host_output = run_host(target)
+            nmap_output = run_nmap(target, nmap_flags)
+            smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
+            ftp_allowed = run_ftp(target)
+            ftp_string = f"Anonymous FTP login {'allowed' if ftp_allowed else 'not allowed'}"
+            screenshot_filepath = get_screenshot(target)
+            if screenshot_filepath:
+                os.makedirs('flaskr/static/screenshots', exist_ok=True)
+                run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
+            robots_output = get_robots_file(target).stdout
+            dns_recon_output = run_dns_recon(target)
+            result = {
+                'target': target,
+                'host_output': host_output,
+                'dns_recon_output': dns_recon_output,
+                'nmap_output': nmap_output,
+                'smbclient_output': smbclient_output,
+                'ftp_result': ftp_string,
+                'screenshot': f'static/screenshots/{target}.png' if screenshot_filepath else "[*] Couldn't get a screenshot of the target!",
+                'robots_file': robots_output
+            }
+            result["ai_advice"] = make_api_call(result)
+            temp_file_path = save_scan_results_to_tempfile(result)
+            db = get_db()
+            db.execute(
+                "INSERT INTO scan_results (target, host_output, nmap_output, smbclient_output, ftp_result, screenshot, "
+                "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                (target,
+                 host_output,
+                 nmap_output,
+                 smbclient_output,
+                 ftp_string,
+                 screenshot_filepath,
+                 robots_output,
+                 result["ai_advice"]))
+            db.commit()
+            return temp_file_path
 
+    file_paths = []
+    a = current_app._get_current_object()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {executor.submit(process_target, a, target): target for target in target_list}
+        for future in concurrent.futures.as_completed(futures):
+            file_paths.append(future.result())
     return file_paths
-        # dns_recon_output = run_dns_recon(target)
+    # dns_recon_output = run_dns_recon(target)
         # dns_recon_string = f'[*] dnsrecon output:'
 
 
@@ -96,6 +125,19 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
     }
     result["ai_advice"] = make_api_call(result)
     temp_file_path = save_scan_results_to_tempfile(result)
+    db = get_db()
+    db.execute(
+        "INSERT INTO scan_results (target, host_output, nmap_output, smbclient_output, ftp_result, screenshot, "
+        "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (target,
+         host_output,
+         nmap_output,
+         smbclient_output,
+         ftp_string,
+         screenshot_filepath,
+         robots_output,
+         result["ai_advice"]))
+    db.commit()
     return temp_file_path
     # return {"target": target, "result": result}
 

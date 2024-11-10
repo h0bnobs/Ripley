@@ -17,13 +17,12 @@
 - Detect whether it's a webapp test or infrastructure target
 - For the robots file, sort it into allow and disallow and get AI to point out the most interesting parts. 
 - Remove 'multiple_targets' from config.
-- If target file is used, list the targets in the gui landing page.
+- Make the 'view' button work in the previous_scans page.
+- Maybe add a different page for multiple scan previous results. Maybe add a new table in the db for them as well because currently, the table is designed to work for single scans only.
 
 ## GUI todos:
 - Drag and drop config files
 - The option to save configs and reuse them
 - Better way to select/inpput options to edit the config file
-- When the config file is updated in the gui, its updated in project root dir
-- If targets.txt is selected in the config, display some of it's contents.
 - Back button in the results page.
 - Make it look nice.
