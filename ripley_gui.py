@@ -28,9 +28,10 @@ if __name__ == '__main__':
 
     # this script should be run from proj root!
     run_command_no_output('rm -rf flaskr/static/temp')
+    os.makedirs('flaskr/static/temp', exist_ok=True)
     os.makedirs('flaskr/static/screenshots', exist_ok=True)
     os.makedirs('flaskr/static/js', exist_ok=True)
-    time.sleep(1)
+    time.sleep(0.2)
     webbrowser.open(f'http://localhost:{PORT}')
 
     # waits for the Flask thread to finish (or indefinitely)

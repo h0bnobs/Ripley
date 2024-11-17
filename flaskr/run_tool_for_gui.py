@@ -6,11 +6,11 @@ import os
 import tempfile
 import time
 from typing import List, Dict
-
+from termcolor import colored
 from flaskr import get_db
 from ripley_cli import run_host, run_nmap, run_http_get, run_smbclient, run_nikto, run_ftp, get_screenshot, \
-    get_robots_file, run_dns_recon
-from scripts.chatgpt_call import make_api_call
+    get_robots_file, run_dns_recon, run_ffuf_subdomain, target_is_webpage
+from scripts.chatgpt_call import make_chatgpt_api_call
 from scripts.run_commands import run_command_no_output
 from scripts.utils import remove_ansi_escape_codes, gui_banner, COLOURS
 import concurrent.futures
@@ -36,17 +36,38 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
             host_output = run_host(target)
             nmap_output = run_nmap(target, nmap_flags)
             smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
+            print("")
+            print(f'{COLOURS["warn"]} Attempting to connect to ftp anonymously! {COLOURS["end"]}')
             ftp_allowed = run_ftp(target)
-            ftp_string = f"Anonymous FTP login {'allowed' if ftp_allowed else 'not allowed'}"
-            screenshot_filepath = get_screenshot(target)
-            if screenshot_filepath:
-                os.makedirs('flaskr/static/screenshots', exist_ok=True)
-                run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
-            robots_output = get_robots_file(target).stdout
+            ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored(
+                'Anonymous FTP login not allowed!', 'red')
+            print(ftp_string)
+            if target_is_webpage(target):
+                print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
+                robots_output = get_robots_file(target).stdout
+                print(f'{COLOURS["warn"]} End of robots file. {COLOURS["end"]}\n')
+                if target.startswith('www.'):
+                    ffuf_temp_target = target[4:]
+                else:
+                    ffuf_temp_target = target
+                print(f'{COLOURS["warn"]} Attempting to find subdomains for {ffuf_temp_target}! {COLOURS["end"]}')
+                ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target)
+                print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
+                screenshot_filepath = get_screenshot(target)
+                if screenshot_filepath:
+                    os.makedirs('flaskr/static/screenshots', exist_ok=True)
+                    run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
+                    print(
+                        f"{colored('Screenshot acquired and is stored in:', 'green')} {colored(f'flaskr/static/screenshots/{target}.png\n', 'red')}")
+            else:
+                print(
+                    f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
+            print(f'{COLOURS["warn"]} Running dnsrecon! {COLOURS["end"]}')
             dns_recon_output = run_dns_recon(target)
             result = {
                 'target': target,
                 'host_output': host_output,
+                'subdomain_enumeration': ffuf_subdomain_output,
                 'dns_recon_output': dns_recon_output,
                 'nmap_output': nmap_output,
                 'smbclient_output': smbclient_output,
@@ -54,20 +75,23 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
                 'screenshot': f'static/screenshots/{target}.png' if screenshot_filepath else "[*] Couldn't get a screenshot of the target!",
                 'robots_file': robots_output
             }
-            result["ai_advice"] = make_api_call(result)
+            ai_advice = make_chatgpt_api_call(result)
+            result["ai_advice"] = ai_advice
             temp_file_path = save_scan_results_to_tempfile(result)
+            print(ai_advice)
             db = get_db()
             db.execute(
-                "INSERT INTO scan_results (target, host_output, nmap_output, smbclient_output, ftp_result, screenshot, "
-                "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO scan_results (target, host_output, subdomains_found, nmap_output, smbclient_output, ftp_result, screenshot, "
+                "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (target,
                  host_output,
+                 ffuf_subdomain_output,
                  nmap_output,
                  smbclient_output,
                  ftp_string,
                  screenshot_filepath,
                  robots_output,
-                 result["ai_advice"]))
+                 ai_advice))
             db.commit()
             return temp_file_path
 
@@ -99,23 +123,43 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
     :param config: The configuration file as a dictionary.
     :return: The concatenated string outputs of the tools.
     """
-    # todo check if the target includes a webpage or not. If it isn't then exclude some tasks like getting the screenshot.
     target = target_list[0]  # assuming there is only one target in the list!
     nmap_flags = config['nmap_parameters']
     host_output = run_host(target)
     nmap_output = run_nmap(target, nmap_flags)
     smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
+    print("")
+    print(f'{COLOURS["warn"]} Attempting to connect to ftp anonymously! {COLOURS["end"]}')
     ftp_allowed = run_ftp(target)
-    ftp_string = f"Anonymous FTP login {'allowed' if ftp_allowed else 'not allowed'}"
-    screenshot_filepath = get_screenshot(target)
-    if screenshot_filepath:
-        os.makedirs('flaskr/static/screenshots', exist_ok=True)
-        run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
-    robots_output = get_robots_file(target).stdout
+    ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored(
+        'Anonymous FTP login not allowed!', 'red')
+    print(ftp_string)
+    if target_is_webpage(target):
+        print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
+        robots_output = get_robots_file(target).stdout
+        print(f'{COLOURS["warn"]} End of robots file. {COLOURS["end"]}\n')
+        if target.startswith('www.'):
+            ffuf_temp_target = target[4:]
+        else:
+            ffuf_temp_target = target
+        print(f'{COLOURS["warn"]} Attempting to find subdomains for {ffuf_temp_target}! {COLOURS["end"]}')
+        ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target)
+        print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
+        screenshot_filepath = get_screenshot(target)
+        if screenshot_filepath:
+            os.makedirs('flaskr/static/screenshots', exist_ok=True)
+            run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
+            print(
+                f"{colored('Screenshot acquired and is stored in:', 'green')} {colored(f'flaskr/static/screenshots/{target}.png\n', 'red')}")
+    else:
+        print(
+            f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
+    print(f'{COLOURS["warn"]} Running dnsrecon! {COLOURS["end"]}')
     dns_recon_output = run_dns_recon(target)
     result = {
         'target': target,
         'host_output': host_output,
+        'subdomain_enumeration': ffuf_subdomain_output,
         'dns_recon_output': dns_recon_output,
         'nmap_output': nmap_output,
         'smbclient_output': smbclient_output,
@@ -123,44 +167,25 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
         'screenshot': f'static/screenshots/{target}.png' if screenshot_filepath else "[*] Couldn't get a screenshot of the target!",
         'robots_file': robots_output
     }
-    result["ai_advice"] = make_api_call(result)
-    temp_file_path = save_scan_results_to_tempfile(result)
+    ai_advice = make_chatgpt_api_call(result)
+    result["ai_advice"] = ai_advice
+    filepath = save_scan_results_to_tempfile(result)
+    print(ai_advice)
     db = get_db()
     db.execute(
-        "INSERT INTO scan_results (target, host_output, nmap_output, smbclient_output, ftp_result, screenshot, "
-        "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO scan_results (target, host_output, subdomains_found, nmap_output, smbclient_output, ftp_result, screenshot, "
+        "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (target,
          host_output,
+         ffuf_subdomain_output,
          nmap_output,
          smbclient_output,
          ftp_string,
          screenshot_filepath,
          robots_output,
-         result["ai_advice"]))
+         ai_advice))
     db.commit()
-    return temp_file_path
-    # return {"target": target, "result": result}
-
-    # nikto_output = run_nikto(target)
-
-    # host_out = run_host(f"host {target}")
-    # run_nmap(target, nmap_flags)
-    # httpget_out = run_http_get(target)
-
-    # run_smbclient(target)
-    # run_wpscan(target)
-    #
-    # # showmount_command = "showmount -e "
-    # # not working run_showmount(showmount_command)
-    #
-    # # also not working
-    # # run_shc(target)
-    #
-    # ftp_command = "ftp " + target
-    #
-
-    # results.append(f"{host_string}\n{host_output}\n{nmap_string}\n{nmap_output}\n{httpget_string}\n{smbclient_string}\n{smbclient_output}\n\n{ftp_string}\n\n{screenshot_string}\n")
-    # return "\n".join(results)
+    return filepath
 
 
 def save_scan_results_to_tempfile(results: dict[str: str]) -> str:

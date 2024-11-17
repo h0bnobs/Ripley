@@ -16,19 +16,24 @@
 <div class="content outer-content">
     <div class="results">
 
+        <div class="collapsible">Nmap Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['nmap_output'] }}</pre>
+        </div>
+
         <div class="collapsible">Host Command Output</div>
         <div class="content inner-content">
             <pre>{{ result['host_output'] }}</pre>
         </div>
 
+        <div class="collapsible">Ffuf subdomain enumeration output</div>
+        <div class="content inner-content">
+            <pre>{{ result['subdomain_enumeration'] }}</pre>
+        </div>
+
         <div class="collapsible">DnsRecon Command Output</div>
         <div class="content inner-content">
             <pre>{{ result['dns_recon_output'] }}</pre>
-        </div>
-
-        <div class="collapsible">Nmap Output</div>
-        <div class="content inner-content">
-            <pre>{{ result['nmap_output'] }}</pre>
         </div>
 
         <div class="collapsible">SMBClient Output</div>

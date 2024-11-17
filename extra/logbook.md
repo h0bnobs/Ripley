@@ -72,3 +72,10 @@
 - Also added [the previous scans page](../flaskr/templates/previous_scans.html) that uses the db to display the previous scans.
   - Currently, it is set up for single scans only. I need to think of a way to preperly display scans that were against more than 1 target.
 - Added a back button for all results pages.
+
+### Sunday 17th November
+17/11/24 05:20pm
+- Added `ffuf` subdomain enumeration.
+- Rewrote the cli version to incorporate all the new changes added to [run_tool_for_gui.py](../flaskr/run_tool_for_gui.py).
+- Added some extra helper methods to [utils.py](../scripts/utils.py).
+- Reworded the AI prompt.

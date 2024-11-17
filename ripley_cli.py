@@ -1,17 +1,21 @@
 import argparse
 import ftplib
 import os
+import time
 from subprocess import CompletedProcess, CalledProcessError
 from typing import List, Dict, Type
-import pexpect
 import re
-
+import concurrent.futures
 from selenium.common import WebDriverException
 from termcolor import colored
 import subprocess
+from flaskr import get_db
+from flask import current_app
+from scripts.chatgpt_call import make_chatgpt_api_call
 from scripts.run_commands import run_command_with_output_after, run_command_live_output_with_input, \
-    run_command_live_output
-from scripts.utils import COLOURS, Spinner, cli_banner, parse_config_file, find_full_filepath
+    run_command_live_output, run_command_no_output
+from scripts.utils import COLOURS, Spinner, cli_banner, parse_config_file, find_full_filepath, remove_ansi_escape_codes, \
+    parse_nmap_xml
 from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -23,38 +27,41 @@ def parse_args():
 
 
 def main():
-    # Average time for threading: 12.62 seconds
-    # Average time for multiprocessing: 11.63 seconds
-    # Average time for xargs: 13.64 seconds
-    cli_banner()
-    args = parse_args()
-    config = parse_config_file(args.config)
+    from flaskr import create_app
+    app = create_app()
+    with app.app_context():
+        # Average time for threading: 12.62 seconds
+        # Average time for multiprocessing: 11.63 seconds
+        # Average time for xargs: 13.64 seconds
+        cli_banner()
+        args = parse_args()
+        config = parse_config_file(args.config)
 
-    if not args.config:
-        raise Exception("You must use -c to specify a configuration file!")
+        if not args.config:
+            raise Exception("You must use -c to specify a configuration file!")
 
-    # process the configuration settings
-    if config is None:
-        raise Exception("Config is null!")
+        # process the configuration settings
+        if config is None:
+            raise Exception("Config is null!")
 
-    single_target = config.get("single_target", "").strip()
-    multiple_targets = config.get("multiple_targets", [])
-    targets_file = config.get("targets_file", "").strip()
+        single_target = config.get("single_target", "").strip()
+        multiple_targets = config.get("multiple_targets", [])
+        targets_file = config.get("targets_file", "").strip()
 
-    target_count = sum([bool(single_target), bool(multiple_targets), bool(targets_file)])
+        target_count = sum([bool(single_target), bool(multiple_targets), bool(targets_file)])
 
-    if target_count != 1:
-        raise Exception("You must specify exactly one of 'single_target', 'multiple_targets', or 'targets_file'.")
+        if target_count != 1:
+            raise Exception("You must specify exactly one of 'single_target', 'multiple_targets', or 'targets_file'.")
 
-    target_list = get_target_list(single_target, multiple_targets, targets_file)
+        target_list = get_target_list(single_target, multiple_targets, targets_file)
 
-    # once target_list is filled, either run_on_multiple_targets or run_on_single_target is called based on the length
-    if len(target_list) > 1:
-        run_on_multiple_targets(target_list, config)
-    elif len(target_list) == 1:
-        run_on_single_target(target_list, config)
-    else:
-        raise Exception("Target list empty!")
+        # once target_list is filled, either run_on_multiple_targets or run_on_single_target is called based on the length
+        if len(target_list) > 1:
+            run_on_multiple_targets(target_list, config)
+        elif len(target_list) == 1:
+            run_on_single_target(target_list, config)
+        else:
+            raise Exception("Target list empty!")
 
 
 def get_target_list(single_target: str, multiple_targets: str, targets_file: str) -> List[str]:
@@ -88,14 +95,83 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> N
     :param config: The configuration file as a dictionary.
     :return: None
     """
-    for target in target_list:
-        run_host(f"host {target}")
-        nmap_flags = config['nmap_parameters']
-        run_nmap(target, nmap_flags)
-        run_http_get(target)
-        run_smbclient(target)
-        run_nikto(target)
-        # run_showmount(target)
+    def process_target(app, target: str):
+        """
+        Processes a single target.
+        :param app: The flask app.
+        :param target: The target to process.
+        :return: The path to the temp file as a string.
+        """
+        with app.app_context():
+            nmap_flags = config['nmap_parameters']
+            print(f'{COLOURS["warn"]} Host information about {target}: {COLOURS["end"]}')
+            host_output = run_host(target)
+            print(f'{COLOURS["warn"]} End of host information about {target}. {COLOURS["end"]}')
+            print(f'{COLOURS["warn"]} Nmap results for {target}: {COLOURS["end"]}')
+            nmap_output = run_nmap(target, nmap_flags)
+            print(f'{COLOURS["warn"]} End of nmap results for {target}. {COLOURS["end"]}')
+            print(f'{COLOURS["warn"]} Smbclient info for {target}: {COLOURS["end"]}')
+            smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
+            print(f'{COLOURS["warn"]} End of smbclient info for {target} {COLOURS["end"]}')
+            print(f'{COLOURS["warn"]} Attempting to connect to ftp anonymously on {target}! {COLOURS["end"]}')
+            ftp_allowed = run_ftp(target)
+            ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored(
+                'Anonymous FTP login not allowed!', 'red')
+            print(ftp_string)
+            if target_is_webpage(target):
+                print(f'{COLOURS["warn"]} Getting robots.txt file for {target}! {COLOURS["end"]}')
+                robots_output = get_robots_file(target).stdout
+                print(f'{COLOURS["warn"]} End of robots file for {target} {COLOURS["end"]}\n')
+                print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
+                if target.startswith('www.'):
+                    ffuf_temp_target = target[4:]
+                ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target)
+                print(f'{COLOURS["warn"]} Getting screenshot for {target}! {COLOURS["end"]}')
+                screenshot_filepath = get_screenshot(target)
+                if screenshot_filepath:
+                    os.makedirs('flaskr/static/screenshots', exist_ok=True)
+                    run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
+                    print(
+                        f"{colored('Screenshot acquired and is stored in:', 'green')} {colored(f'flaskr/static/screenshots/{target}.png\n', 'red')}")
+            else:
+                print(f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
+
+            print(f'{COLOURS["warn"]} Running dnsrecon on {target}! {COLOURS["end"]}')
+            dns_recon_output = run_dns_recon(target)
+            print(f'{COLOURS["warn"]} End of dnsrecon sscan on {target}. {COLOURS["end"]}')
+            result = {
+                'target': target,
+                'host_output': host_output,
+                'subdomain_enumeration': ffuf_subdomain_output,
+                'dns_recon_output': dns_recon_output,
+                'nmap_output': nmap_output,
+                'smbclient_output': smbclient_output,
+                'ftp_result': ftp_string,
+                'screenshot': f'static/screenshots/{target}.png' if screenshot_filepath else "[*] Couldn't get a screenshot of the target!",
+                'robots_file': robots_output
+            }
+            print(f'{COLOURS["warn"]} AI advice for {target}: {COLOURS["end"]}')
+            ai_advice = make_chatgpt_api_call(result)
+            print(ai_advice)
+            db = get_db()
+            db.execute(
+                "INSERT INTO scan_results (target, host_output, subdomains_found, nmap_output, smbclient_output, ftp_result, screenshot, "
+                "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (target,
+                 host_output,
+                 ffuf_subdomain_output,
+                 nmap_output,
+                 smbclient_output,
+                 ftp_string,
+                 screenshot_filepath,
+                 robots_output,
+                 ai_advice))
+            db.commit()
+
+    a = current_app._get_current_object()
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = {executor.submit(process_target, a, target): target for target in target_list}
+
 
 
 def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None:
@@ -106,41 +182,88 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None
     """
     target = target_list[0]  # assuming there is only one target in the list!
     nmap_flags = config['nmap_parameters']
-    # todo do something with this:!!
-    output_filename = f"{target}.xml"
-    run_host(f"host {target}")
-    run_nmap(target, nmap_flags)
-    run_http_get(target)
-    run_smbclient(target)
+    host_output = run_host(target)
+    nmap_output = run_nmap(target, nmap_flags)
+    smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
+    print("")
+    print(f'{COLOURS["warn"]} Attempting to connect to ftp anonymously! {COLOURS["end"]}')
+    ftp_allowed = run_ftp(target)
+    ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored('Anonymous FTP login not allowed!', 'red')
+    print(ftp_string)
+    if target_is_webpage(target):
+        print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
+        robots_output = get_robots_file(target).stdout
+        print(f'{COLOURS["warn"]} End of robots file. {COLOURS["end"]}\n')
+        print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
+        if target.startswith('www.'):
+            ffuf_temp_target = target[4:]
+        ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target)
+        print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
+        screenshot_filepath = get_screenshot(target)
+        if screenshot_filepath:
+            os.makedirs('flaskr/static/screenshots', exist_ok=True)
+            run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
+            print(f"{colored('Screenshot acquired and is stored in:', 'green')} {colored(f'flaskr/static/screenshots/{target}.png\n', 'red')}")
+    else:
+        print(f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
+    print(f'{COLOURS["warn"]} Running dnsrecon! {COLOURS["end"]}')
+    dns_recon_output = run_dns_recon(target)
+    result = {
+        'target': target,
+        'host_output': host_output,
+        'subdomain_enumeration': ffuf_subdomain_output,
+        'dns_recon_output': dns_recon_output,
+        'nmap_output': nmap_output,
+        'smbclient_output': smbclient_output,
+        'ftp_result': ftp_string,
+        'screenshot': f'static/screenshots/{target}.png' if screenshot_filepath else "[*] Couldn't get a screenshot of the target!",
+        'robots_file': robots_output
+    }
+    ai_advice = make_chatgpt_api_call(result)
+    print(ai_advice)
+    db = get_db()
+    db.execute(
+        "INSERT INTO scan_results (target, host_output, subdomains_found, nmap_output, smbclient_output, ftp_result, screenshot, "
+        "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (target,
+         host_output,
+         ffuf_subdomain_output,
+         nmap_output,
+         smbclient_output,
+         ftp_string,
+         screenshot_filepath,
+         robots_output,
+         ai_advice))
+    db.commit()
 
-    run_nikto(target)
-    # host_out = run_host(f"host {target}")
-    # run_nmap(target, nmap_flags)
-    # httpget_out = run_http_get(target)
 
-    # run_smbclient(target)
-    # run_wpscan(target)
-    #
-    # # showmount_command = "showmount -e "
-    # # not working run_showmount(showmount_command)
-    #
-    # # also not working
-    # # run_shc(target)
-    #
-    # ftp_command = "ftp " + target
-    # run_ftp(ftp_command, target)
-    #
-
+def target_is_webpage(target: str) -> bool:
+    """
+    Checks if the target is a webpage.
+    :param nmap_flags: The flags that the user has defined in the config to run their nmap.
+    :param target: The target to check.
+    :return: True if the target is a webpage, False otherwise.
+    """
+    open_ports = parse_nmap_xml(f'flaskr/static/temp/nmap-{target}.xml', [80, 443, 8080, 8443])
+    run_command_no_output(f'rm nmap-{target}.xml')
+    if '80' in open_ports or '443' in open_ports or '8080' in open_ports or '8443' in open_ports:
+        return True
+    return False
 
 def run_nmap(target: str, flags: str) -> str:
     """
-    Runs the nmap tool on the target.
+    Runs the nmap tool on the target. Saves the output to a xml file in the flaskr/static/temp folder, which is cleared everytime the tool runs.
     :param target: The target to run nmap on.
     :param flags: The flags to use with nmap.
     :return: The output of the nmap tool as a string or a CalledProcessError.
     """
     try:
-        command = f"nmap {flags} {target}"
+        # todo: right now we are assuming that the user has not included any flags that will save the output to a file.
+        # This needs to be addressed in some way either adds logic that will copy the user's output file to the temp directory with a name
+        # that the script knows, or just asking the user to not include these output flags, but have an option in the gui that handles this idk.
+
+        # so right here we are adding the -oX flag because we assume It's not already there.
+        command = f"nmap {flags} -oX flaskr/static/temp/nmap-{target}.xml {target}"
         spinner = Spinner()
         spinner.start()
         result = run_command_with_output_after(command)
@@ -168,6 +291,21 @@ def run_ftp(target: str) -> bool:
     except (ftplib.error_perm, Exception) as e:
         print(f'Failed to connect to ftp server!')
         return False
+
+
+def run_ffuf_subdomain(target: str) -> str:
+    """
+    Runs ffuf to find subdomains. WARNING: remember to remove 'www.' from the target before running this function.
+    :param target: The target to run ffuf on.
+    :return: The output of the ffuf tool as a string or a CalledProcessError.
+    """
+    # todo: get the wordlist! Also look for a smaller one.
+    # /usr/share/wordlists/n0kovo_subdomains_tiny.txt
+    command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt'
+    result = run_command_live_output(command)
+    # print(result)
+    print("")
+    return result
 
 
 def get_ipv4_addresses(domain):
@@ -292,13 +430,14 @@ def get_screenshot(target: str) -> str:
     for url in attempts:
         try:
             chromedriver = webdriver.Chrome()
+            chromedriver.set_window_size(1500, 1080)
             chromedriver.get(url)
+            time.sleep(1)
             screenshot_path = f'output/{target}.png'
             chromedriver.save_screenshot(screenshot_path)
-            break  # Exit the loop if the connection is successful
+            break
         except WebDriverException:
-            continue  # Try the next URL if there’s a connection issue
-
+            continue
     chromedriver.quit()
 
     if screenshot_path:
@@ -318,7 +457,7 @@ def run_wpscan(target):
         return error_message
 
 
-def run_host(target):
+def run_host(target: str):
     command = f'host {target}'
     if target.startswith('www.'):
         one = run_command_with_output_after(f'host {target.split("www.")[1]}')
@@ -326,7 +465,7 @@ def run_host(target):
         return f'{one.stdout}\n{two.stdout}'
     else:
         result = run_command_with_output_after(command)
-        print(result.stdout)
+        # print(result.stdout)
         return result.stdout
 
 

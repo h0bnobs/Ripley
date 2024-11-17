@@ -6,6 +6,7 @@ import json
 from termcolor import colored
 import re
 import os
+import xml.etree.ElementTree as ET
 
 COLOURS = {
     "plus": "\033[1;34m[\033[1;m\033[1;32m+\033[1;m\033[1;34m]",
@@ -16,6 +17,8 @@ COLOURS = {
     "end": "\033[1;m",
     "redStart": "\e[31m",
     "redEnd": "\e[0m",
+    "greenStart": "\e[32m",
+    "greenEnd": "\e[0m",
 }
 
 SPINNER_STATES = itertools.cycle(['-', '\\', '|', '/'])
@@ -124,12 +127,55 @@ def remove_ansi_escape_codes(text: str) -> str:
 
 def find_full_filepath(directory: str, filename: str):
     """
-
-    :param directory:
-    :param filename:
-    :return:
+    Finds the full filepath of a file in a given directory.
+    :param directory: The directory to search.
+    :param filename: The filename to search for.
+    :return: The full filepath of the file or None if not found.
     """
     for root, dirs, files in os.walk(directory):
         if filename in files:
             return os.path.join(root, filename)
     return None
+
+def parse_nmap_xml(xml_file: str, ports_to_check: list[int]) -> list[str]:
+    """
+    Parses the Nmap XML output file to check if certain ports are open on the target.
+    :param xml_file: The path to the Nmap XML output file.
+    :param ports_to_check: A list of ports to check.
+    :return: A list of open ports.
+    """
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+    open_ports = []
+
+    for host in root.findall('host'):
+        addresses = host.findall('address')
+        ip_address = None
+        for address in addresses:
+            if address.get('addrtype') == 'ipv4':
+                ip_address = address.get('addr')
+                break
+
+        if ip_address is None:
+            continue
+
+        for port in host.findall('.//port'):
+            port_id = port.get('portid')
+            state = port.find('state').get('state')
+            if state == 'open' and int(port_id) in ports_to_check:
+                open_ports.append(port_id)
+
+    return open_ports
+
+
+def is_ip(target: str) -> bool:
+    """
+    Checks if the target is an IP address.
+    :param target: The target to check.
+    :return: True if the target is an IP address, False otherwise.
+    """
+    if not target or target == "":
+        print("Target is empty or None")
+        return False
+    ip_regex = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
+    return ip_regex.match(target) is not None

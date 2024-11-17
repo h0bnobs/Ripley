@@ -8,21 +8,21 @@
 - Custom scripts/plugins
 - Add verbose levels to cli version?
 - Get all the tools needed beforehand?
-- Some kind of information storage about the target. Suggestions based upon this information.
-- AI suggestions
-- Concurrency
+- Asynchronous scanning mainly for things like nikto and webpage enumeration because they can take a long time.
+- Let the user add their own tools/commands to the entire scan, eg let them run a tool that isn't yet in ripley, or let them run their own scripts.
 
 ## Lower level stuff:
 - OS detection
-- Detect whether it's a webapp test or infrastructure target
 - For the robots file, sort it into allow and disallow and get AI to point out the most interesting parts. 
 - Remove 'multiple_targets' from config.
 - Make the 'view' button work in the previous_scans page.
 - Maybe add a different page for multiple scan previous results. Maybe add a new table in the db for them as well because currently, the table is designed to work for single scans only.
+- Acquiring the screenshot in the cli version is unoptimised because it currently performs two nmap scans (once at the beginning of ripley, and once again to check if the target is a webpage or not). This needs to be changed so that only 1 nmap scan is performed.
+- Searching previous scans
+- Learn the concurrency modules `concurrent.features` and `ThreadPoolExecuter()` for the writeup
 
-## GUI todos:
+## GUI specific todos:
 - Drag and drop config files
 - The option to save configs and reuse them
-- Better way to select/inpput options to edit the config file
-- Back button in the results page.
+- Better way to select/input options to edit the config file
 - Make it look nice.
