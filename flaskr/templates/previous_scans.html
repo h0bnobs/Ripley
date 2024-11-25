@@ -7,36 +7,43 @@
         table {
             border-collapse: collapse;
         }
+
         th, td {
             padding: 8px;
             text-align: center;
         }
+
         .button-cell {
             border: none;
         }
     </style>
 </head>
 <body>
-    <h2>Previous Scans</h2>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Target</th>
-                <th>Scan start time</th>
-                <th>Scan number</th>
-                <th class="button-cell" style="border: none"></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for result in results %}
-            <tr>
-                <td>{{ result['target'] }}</td>
-                <td>{{ result['scan_start_time'] }}</td>
-                <td>{{ result['scan_num'] }}</td>
-                <td class="button-cell"><button>View</button></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<h2>Previous Scans</h2>
+<table border="1">
+    <thead>
+    <tr>
+        <th>Target</th>
+        <th>Scan start time</th>
+        <th>Scan number</th>
+        <th class="button-cell" style="border: none"></th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for result in results %}
+    <tr>
+        <td>{{ result['target'] }}</td>
+        <td>{{ result['scan_start_time'] }}</td>
+        <td>{{ result['scan_num'] }}</td>
+        <td class="button-cell">
+            <form action="{{ url_for('view_single_previous_scan') }}" method="post">
+                <input type="hidden" name="scan_start_time" value="{{ result['scan_start_time'] }}">
+                <button type="submit">View</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
 </body>
 </html>

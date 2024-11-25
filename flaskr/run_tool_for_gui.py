@@ -9,10 +9,10 @@ from typing import List, Dict
 from termcolor import colored
 from flaskr import get_db
 from ripley_cli import run_host, run_nmap, run_http_get, run_smbclient, run_nikto, run_ftp, get_screenshot, \
-    get_robots_file, run_dns_recon, run_ffuf_subdomain, target_is_webpage
+    get_robots_file, run_dns_recon, run_ffuf_subdomain, is_target_webpage, run_ffuf_webpage
 from scripts.chatgpt_call import make_chatgpt_api_call
 from scripts.run_commands import run_command_no_output
-from scripts.utils import remove_ansi_escape_codes, gui_banner, COLOURS
+from scripts.utils import remove_ansi_escape_codes, gui_banner, COLOURS, remove_leading_newline
 import concurrent.futures
 from flask import current_app
 
@@ -42,7 +42,7 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
             ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored(
                 'Anonymous FTP login not allowed!', 'red')
             print(ftp_string)
-            if target_is_webpage(target):
+            if is_target_webpage(target):
                 print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
                 robots_output = get_robots_file(target).stdout
                 print(f'{COLOURS["warn"]} End of robots file. {COLOURS["end"]}\n')
@@ -81,11 +81,12 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
             print(ai_advice)
             db = get_db()
             db.execute(
-                "INSERT INTO scan_results (target, host_output, subdomains_found, nmap_output, smbclient_output, ftp_result, screenshot, "
-                "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO scan_results (target, host_output, subdomains_found, dns_recon_output, nmap_output, smbclient_output, ftp_result, screenshot, "
+                "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (target,
                  host_output,
                  ffuf_subdomain_output,
+                 dns_recon_output,
                  nmap_output,
                  smbclient_output,
                  ftp_string,
@@ -134,16 +135,19 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
     ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored(
         'Anonymous FTP login not allowed!', 'red')
     print(ftp_string)
-    if target_is_webpage(target):
+    if is_target_webpage(target):
+        print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
+        ffuf_webpage_output = run_ffuf_webpage(target, delay=0.2)
+        print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
         print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
         robots_output = get_robots_file(target).stdout
         print(f'{COLOURS["warn"]} End of robots file. {COLOURS["end"]}\n')
+        print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
         if target.startswith('www.'):
             ffuf_temp_target = target[4:]
+            ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target)
         else:
-            ffuf_temp_target = target
-        print(f'{COLOURS["warn"]} Attempting to find subdomains for {ffuf_temp_target}! {COLOURS["end"]}')
-        ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target)
+            ffuf_subdomain_output = run_ffuf_subdomain(target)
         print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
         screenshot_filepath = get_screenshot(target)
         if screenshot_filepath:
@@ -160,6 +164,7 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
         'target': target,
         'host_output': host_output,
         'subdomain_enumeration': ffuf_subdomain_output,
+        'webpages_found': ffuf_webpage_output,
         'dns_recon_output': dns_recon_output,
         'nmap_output': nmap_output,
         'smbclient_output': smbclient_output,
@@ -173,11 +178,14 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
     print(ai_advice)
     db = get_db()
     db.execute(
-        "INSERT INTO scan_results (target, host_output, subdomains_found, nmap_output, smbclient_output, ftp_result, screenshot, "
-        "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO scan_results (target, host_output, subdomains_found, webpages_found, dns_recon_output, "
+        "nmap_output, smbclient_output, ftp_result, screenshot, robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, "
+        "?, ?, ?, ?, ?)",
         (target,
          host_output,
-         ffuf_subdomain_output,
+         remove_leading_newline(remove_ansi_escape_codes(ffuf_subdomain_output)),
+         remove_leading_newline(remove_ansi_escape_codes(ffuf_webpage_output)),
+         dns_recon_output,
          nmap_output,
          smbclient_output,
          ftp_string,

@@ -19,8 +19,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, R
 from flaskr.db import get_db, init_db
 from ripley_cli import get_target_list
 from flaskr.run_tool_for_gui import run_on_multiple_targets, run_on_single_target
-from scripts.run_commands import run_command_no_output
-from scripts.utils import parse_config_file, gui_banner, robots_string
+from scripts.utils import parse_config_file, robots_string
 
 # flask --app flaskr init-db
 # flask --app flaskr run --debug
@@ -65,23 +64,23 @@ def create_app(test_config=None) -> Flask:
         pass
 
     @app.route('/')
-    def index():
+    def index() -> str:
         """
         The route for the homepage. Displays the config.
         :return: The render of the index html file
         """
         db = get_db()
         config_entries = db.execute("SELECT * FROM config").fetchall()
-        results = [dict(entry) for entry in config_entries]
-        targets = results[0]['single_target'] or open(results[0]['targets_file']).readlines() if results[0]['targets_file'] else None
-        print(results)
+        config = [dict(entry) for entry in config_entries]
+        targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0]['targets_file'] else None
+        print(config)
         if targets is None:
-            return render_template('index.html', results=results)
+            return render_template('index.html', results=config)
         else:
-            return render_template('index.html', results=results, targets=targets)
+            return render_template('index.html', results=config, targets=targets)
 
     @app.route('/view-targets-file')
-    def view_targets_file():
+    def view_targets_file() -> tuple[str, int] | Response:
         """
         Serves the targets file for viewing in the browser.
         :return: The content of the targets file.
@@ -98,7 +97,7 @@ def create_app(test_config=None) -> Flask:
             return "Targets file not found!", 404
 
     @app.route('/robots.txt')
-    def robots():
+    def robots() -> Response:
         """
         The route for the robots.txt file.
         :return: The robots.txt file.
@@ -106,7 +105,7 @@ def create_app(test_config=None) -> Flask:
         return Response(robots_string(), mimetype='text/plain')
 
     @app.route('/previous-scans')
-    def previous_scans():
+    def previous_scans() -> str:
         """
         The route for viewing previous scans.
         :return: The render template of the previous scans html file.
@@ -115,6 +114,42 @@ def create_app(test_config=None) -> Flask:
         scan_results = db.execute("SELECT * FROM scan_results").fetchall()
         results = [dict(row) for row in scan_results]
         return render_template('previous_scans.html', results=results)
+
+    @app.route('/view_single_previous_scan', methods=['POST'])
+    def view_single_previous_scan() -> str:
+        """
+        This is for the button on the previous scans page that says "View" for each scan.
+        :return: The render template of the previous scan single target html file.
+        """
+        scan_start_time = request.form['scan_start_time']
+        db = get_db()
+        result = db.execute("SELECT * FROM scan_results WHERE scan_start_time = ?", (scan_start_time,)).fetchone()
+        result = dict(result)
+        # we need to change the screenshot from 'output/{target}' to the location of the ss inside the flaskr directory.
+        # if the screenshot isn't there then its fine, it'll just display a message.
+        result['screenshot'] = f'static/screenshots/{result["target"]}.png'
+        return render_template('previous_scan_single_target.html', result=result)
+
+    @app.route('/add-commands', methods=['POST', 'GET'])
+    def view_add_commands() -> str:
+        """
+        The route for the add commands page.
+        If the request method is GET, it renders the add_commands page.
+        If the request method is POST, it handles the form submission.
+        :return: The render template of the add commands html file or a response after handling POST.
+        """
+        db = get_db()
+        config_entries = db.execute("SELECT * FROM config").fetchall()
+        config = [dict(entry) for entry in config_entries]
+        if request.method == 'POST':
+            form_data = request.form
+            command = form_data.get('command')
+            print(command)
+            # Add your logic to handle the form data
+            return render_template('add_commands.html', config=config)
+
+        # If the request method is GET, render the add_commands page
+        return render_template('add_commands.html', config=config)
 
     @app.route('/update-config', methods=['POST'])
     def update_config() -> Response:
@@ -127,18 +162,19 @@ def create_app(test_config=None) -> Flask:
         new_config = json.loads(request.form['config'])
         db = get_db()
         db.execute(
-            "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?",
+            "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, extra_commands = ?",
             (new_config['single_target'],
              new_config['multiple_targets'],
              new_config['targets_file'],
              new_config['nmap_parameters'],
-             new_config['config_filepath'])
+             new_config['config_filepath'],
+             ','.join(new_config.get('extra_commands', [])))  # Join the list into a comma-separated string
         )
         db.commit()
 
         # now we update config.json in the directory root
         cursor = db.execute(
-            "SELECT single_target, multiple_targets, targets_file, nmap_parameters, config_filepath FROM config")
+            "SELECT single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, extra_commands FROM config")
         row = cursor.fetchone()
         if row:
             config_filepath = row["config_filepath"]
@@ -149,6 +185,7 @@ def create_app(test_config=None) -> Flask:
             config_data["targets_file"] = row["targets_file"]
             config_data["nmap_parameters"] = row["nmap_parameters"]
             config_data["config_filepath"] = row["config_filepath"]
+            config_data["extra_commands"] = row["extra_commands"].split(',')  # Split the string back into a list
             with open('config.json', 'w') as file:
                 json.dump(config_data, file, indent=4)
         else:
@@ -246,11 +283,12 @@ def load_config_into_db() -> None:
     db = get_db()
     if config:
         db.execute(
-            "INSERT INTO config (single_target, multiple_targets, targets_file, nmap_parameters, config_filepath) VALUES (?, ?, ?, ?, ?)",
+            "INSERT INTO config (single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, extra_commands) VALUES (?, ?, ?, ?, ?, ?)",
             (config.get('single_target', ''),
              config.get('multiple_targets', ''),
              config.get('targets_file', ''),
              config.get('nmap_parameters', ''),
-             config_filepath)
+             config_filepath,
+             ','.join(config.get('extra_commands', [])))
         )
         db.commit()

@@ -1,81 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
-   <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Configuration</title>
-      <style>
-         /* textarea style feel like a text editor */
-         textarea {
-         width: 40%;
-         height: 200px;
-         font-family: monospace;
-         font-size: 14px;
-         padding: 10px;
-         border: 1px solid #ccc;
-         border-radius: 5px;
-         background-color: #f4f4f4;
-         }
-         button {
-         margin-top: 10px;
-         }
-         .targets {
-             position: absolute;
-             right: 39%;
-             top: 5.5%;
-         }
-      </style>
-      <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-      <script src="../static/js/index.js"></script>
-   </head>
-   <body>
-      <h2>View and edit current config that the tool will use:</h2>
-      <!-- allows users to edit the config as JSON -->
-      <form action="/update-config" method="POST">
-         <textarea id="config" name="config">{
-         {% for entry in results %}
-         "single_target": "{{ entry['single_target'] }}",
-         "multiple_targets": {{ entry['multiple_targets'] | tojson }},
-         "targets_file": "{{ entry['targets_file'] }}",
-         "nmap_parameters": "{{ entry['nmap_parameters'] }}",
-         "config_filepath": "{{ entry['config_filepath'] }}"
-         {% if not loop.last %},{% endif %}
-         {% endfor %}
-         }</textarea>
-         <br>
-         <button type="submit">Update Config</button>
-      </form>
-      <!-- "run ripley" Button -->
-      <form action="/running" method="POST">
-         <input type="hidden" name="running" value='{
-         {% for entry in results %}
-         "single_target": "{{ entry['single_target'] }}",
-         "multiple_targets": {{ entry['multiple_targets'] | tojson }},
-         "targets_file": "{{ entry['targets_file'] }}",
-         "nmap_parameters": "{{ entry['nmap_parameters'] }}",
-         "config_filepath": "{{ entry['config_filepath'] }}"
-         {% if not loop.last %},{% endif %}
-         {% endfor %}
-         }'>
-         <button type="submit">Run Ripley</button>
-      </form>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration</title>
+    <style>
+        /* textarea style feel like a text editor */
+        textarea {
+            width: 30%;
+            height: 150px;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f4f4f4;
+        }
 
-      {% if targets %}
-      <!-- displays targets from the file -->
-      <div class="targets">
-         <h3>First few targets from {{ results[0]['targets_file'] }}:</h3>
-            <span id="targets-filepath" style="display: none;">{{ results[0]['targets_file'] }}</span>
-            <ul>
-            {% for target in targets[:8] %}
-            <li>{{ target }}</li>
-            {% endfor %}
-         </ul>
-         <button class="open_targets_in_browser">View targets file in browser</button>
+        button {
+            margin-top: 10px;
+        }
 
-      </div>
-      {% endif %}
-      <form action="/previous-scans" method="GET">
-         <button type="submit">View last scans</button>
-      </form>
-   </body>
+        .targets {
+            position: absolute;
+            right: 39%;
+            top: 5.5%;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../static/js/index.js"></script>
+</head>
+<body>
+<h2>View and edit current config that the tool will use:</h2>
+<!-- allows users to edit the config as JSON -->
+<form action="/update-config" method="POST">
+             <textarea id="config" name="config">{
+{% for entry in results %}   "single_target":"{{ entry['single_target'] }}",
+   "multiple_targets": {{ entry['multiple_targets'] | tojson }},
+   "targets_file": "{{ entry['targets_file'] }}",
+   "nmap_parameters": "{{ entry['nmap_parameters'] }}",
+   "config_filepath": "{{ entry['config_filepath'] }}",
+   "extra_commands": "{{ entry['extra_commands'] }}"
+}
+{% if not loop.last %},{% endif %}{% endfor %}</textarea>
+    <br>
+    <button type="submit">Update Config</button>
+</form>
+<!-- "run ripley" Button -->
+<form action="/running" method="POST">
+    <input type="hidden" name="running" value='{
+    {% for entry in results %}
+    "single_target": "{{ entry['single_target'] }}",
+    "multiple_targets": {{ entry['multiple_targets'] | tojson }},
+    "targets_file": "{{ entry['targets_file'] }}",
+    "nmap_parameters": "{{ entry['nmap_parameters'] }}",
+    "config_filepath": "{{ entry['config_filepath'] }}"
+    {% if not loop.last %},{% endif %}
+    {% endfor %}
+}'>
+    <button type="submit">Run Ripley</button>
+</form>
+
+{% if targets %}
+<!-- displays targets from the file -->
+<div class="targets">
+    <h3>First few targets from {{ results[0]['targets_file'] }}:</h3>
+    <span id="targets-filepath" style="display: none;">{{ results[0]['targets_file'] }}</span>
+    <ul>
+        {% for target in targets[:8] %}
+        <li>{{ target }}</li>
+        {% endfor %}
+    </ul>
+    <button class="open_targets_in_browser">View targets file in browser</button>
+
+</div>
+{% endif %}
+<form action="/previous-scans" method="GET">
+    <button type="submit">View last scans</button>
+</form>
+<form action="/add-commands" method="GET">
+    <button type="submit">Add a command</button>
+</form>
+</body>
 </html>

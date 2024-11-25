@@ -79,3 +79,10 @@
 - Rewrote the cli version to incorporate all the new changes added to [run_tool_for_gui.py](../flaskr/run_tool_for_gui.py).
 - Added some extra helper methods to [utils.py](../scripts/utils.py).
 - Reworded the AI prompt.
+
+### Monday 25th November
+25/11/24 11:40am
+- Added `ffuf` for webpage/dictionary enumeration.
+- Started work on a feature where the user can add their own commands to the tool.
+- Fixed the [previous scans page](../templates/previous_scan_single_target.html) so that the user can now fully view any previous scan.
+- 

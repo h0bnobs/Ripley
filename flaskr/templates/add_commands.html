@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        button {
+            margin-top: 10px;
+        }
+
+        textarea {
+            width: 20%;
+            height: 150px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f4f4f4;
+        }
+    </style>
+</head>
+<body>
+<button onclick="window.location.href='/'">Back</button><br>
+<form action="/add-commands" method="POST">
+    <input type="text" id="command-input" name="command" style="width: 30%; margin-top: 10px;">
+    <button type="submit">Submit</button>
+</form>
+<h3 id="command-display"></h3>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#command-input').on('input', function() {
+            var inputText = $(this).val();
+            $('#command-display').html('The command will be run exactly as:<br>' + inputText + '{{config[0]["single_target"] }}');
+        });
+    });
+</script>
+</body>
+</html>

@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scan Results</title>
+    <title>Previous scan on a single target</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
     <link rel="stylesheet" href="../static/style/style.css">
 </head>
 <body>
-<h1>Scan Results</h1>
+<h1>Scan Results From {{ result['scan_start_time'] }}</h1>
 <button onclick="window.location.href='/'">Back</button>
 <!-- Outer collapsible for the entire target -->
-<div class="collapsible outer-collapsible">Scan Results for Target: {{ target }}</div>
+<div class="collapsible outer-collapsible">{{ result['target'] }}</div>
 <div class="content outer-content">
     <div class="results">
 
@@ -28,12 +28,7 @@
 
         <div class="collapsible">Ffuf subdomain enumeration output:</div>
         <div class="content inner-content">
-            <pre>{{ result['subdomain_enumeration'] }}</pre>
-        </div>
-
-        <div class="collapsible">Ffuf webpage enumeration output:</div>
-        <div class="content inner-content">
-            <pre>{{ result['webpages_found'] }}</pre>
+            <pre>{{ result['subdomains_found'] }}</pre>
         </div>
 
         <div class="collapsible">DnsRecon Command Output</div>
@@ -62,7 +57,7 @@
 
         <div class="collapsible">Robots.txt Contents:</div>
         <div class="content inner-content">
-            <pre>{{ result['robots_file'] }}</pre>
+            <pre>{{ result['robots_output'] }}</pre>
         </div>
 
         <div class="collapsible">Recommendations:</div>

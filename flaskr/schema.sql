@@ -5,7 +5,8 @@ CREATE TABLE config (
   multiple_targets TEXT,
   targets_file TEXT,
   nmap_parameters TEXT,
-  config_filepath TEXT
+  config_filepath TEXT,
+  extra_commands TEXT
 );
 
 -- "single_target": "",

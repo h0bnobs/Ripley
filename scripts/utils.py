@@ -179,3 +179,14 @@ def is_ip(target: str) -> bool:
         return False
     ip_regex = re.compile(r"^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$")
     return ip_regex.match(target) is not None
+
+
+def remove_leading_newline(text: str) -> str:
+    """
+    Removes a leading newline character from the start of the string if it exists.
+    :param text: The input string.
+    :return: The string without a leading newline character.
+    """
+    if text.startswith('\n'):
+        return text[1:]
+    return text
