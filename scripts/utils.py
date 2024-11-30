@@ -190,3 +190,14 @@ def remove_leading_newline(text: str) -> str:
     if text.startswith('\n'):
         return text[1:]
     return text
+
+def get_extra_commands(filepath: str) -> list[str] | None:
+    """
+    Gets the extra commands from the file.
+    :param filepath: The path to the file.
+    :return: The list of extra commands, or None if the file is empty.
+    """
+    with open(filepath, "r") as f:
+        lines = f.readlines()
+    commands = [line.strip() for line in lines]
+    return commands if commands else None

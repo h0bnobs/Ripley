@@ -74,10 +74,12 @@ def create_app(test_config=None) -> Flask:
         config = [dict(entry) for entry in config_entries]
         targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0]['targets_file'] else None
         print(config)
+        with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
+            extra_commands = f.readlines()
         if targets is None:
-            return render_template('index.html', results=config)
+            return render_template('index.html', results=config, extra_commands=extra_commands)
         else:
-            return render_template('index.html', results=config, targets=targets)
+            return render_template('index.html', results=config, targets=targets, extra_commands=extra_commands)
 
     @app.route('/view-targets-file')
     def view_targets_file() -> tuple[str, int] | Response:
@@ -143,13 +145,18 @@ def create_app(test_config=None) -> Flask:
         config = [dict(entry) for entry in config_entries]
         if request.method == 'POST':
             form_data = request.form
-            command = form_data.get('command')
-            print(command)
-            # Add your logic to handle the form data
-            return render_template('add_commands.html', config=config)
+            command = form_data.get('command').strip()
+            with open('flaskr/static/temp/extra_commands.txt', 'a') as f:
+                f.write(f'{command}\n')
+                #print(command, file=f)
+            with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
+                extra_commands = f.readlines()
+            return render_template('add_commands.html', config=config, extra_commands=extra_commands)
 
-        # If the request method is GET, render the add_commands page
-        return render_template('add_commands.html', config=config)
+        with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
+            extra_commands = f.readlines()
+        #if GET, render the page with config and any commands that have already been added
+        return render_template('add_commands.html', config=config, extra_commands=extra_commands)
 
     @app.route('/update-config', methods=['POST'])
     def update_config() -> Response:
@@ -162,19 +169,19 @@ def create_app(test_config=None) -> Flask:
         new_config = json.loads(request.form['config'])
         db = get_db()
         db.execute(
-            "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, extra_commands = ?",
+            "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?",
             (new_config['single_target'],
              new_config['multiple_targets'],
              new_config['targets_file'],
              new_config['nmap_parameters'],
              new_config['config_filepath'],
-             ','.join(new_config.get('extra_commands', [])))  # Join the list into a comma-separated string
+             new_config['ffuf_delay'])
         )
         db.commit()
 
         # now we update config.json in the directory root
         cursor = db.execute(
-            "SELECT single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, extra_commands FROM config")
+            "SELECT single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, ffuf_delay FROM config")
         row = cursor.fetchone()
         if row:
             config_filepath = row["config_filepath"]
@@ -185,7 +192,7 @@ def create_app(test_config=None) -> Flask:
             config_data["targets_file"] = row["targets_file"]
             config_data["nmap_parameters"] = row["nmap_parameters"]
             config_data["config_filepath"] = row["config_filepath"]
-            config_data["extra_commands"] = row["extra_commands"].split(',')  # Split the string back into a list
+            config_data["ffuf_delay"] = row["ffuf_delay"]
             with open('config.json', 'w') as file:
                 json.dump(config_data, file, indent=4)
         else:
@@ -283,12 +290,12 @@ def load_config_into_db() -> None:
     db = get_db()
     if config:
         db.execute(
-            "INSERT INTO config (single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, extra_commands) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO config (single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, ffuf_delay) VALUES (?, ?, ?, ?, ?, ?)",
             (config.get('single_target', ''),
              config.get('multiple_targets', ''),
              config.get('targets_file', ''),
              config.get('nmap_parameters', ''),
              config_filepath,
-             ','.join(config.get('extra_commands', [])))
+             config.get('ffuf_delay', ''))
         )
         db.commit()

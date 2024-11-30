@@ -40,7 +40,7 @@
    "targets_file": "{{ entry['targets_file'] }}",
    "nmap_parameters": "{{ entry['nmap_parameters'] }}",
    "config_filepath": "{{ entry['config_filepath'] }}",
-   "extra_commands": "{{ entry['extra_commands'] }}"
+   "ffuf_delay": "{{ entry['ffuf_delay'] }}"
 }
 {% if not loop.last %},{% endif %}{% endfor %}</textarea>
     <br>
@@ -81,5 +81,16 @@
 <form action="/add-commands" method="GET">
     <button type="submit">Add a command</button>
 </form>
+{% if extra_commands %}
+    <h4>Extra command(s) to be run:</h4>
+    <p id="commands-display"></p>
+    <script>
+        $(document).ready(function() {
+            var commands = {{ extra_commands|tojson }};
+            var commandsText = commands.join('<br>');
+            $('#commands-display').html(commandsText);
+        });
+    </script>
+{% endif %}
 </body>
 </html>

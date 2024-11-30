@@ -2,7 +2,6 @@
 
 ## Big picture things:
 - HTTP response editor for webapps
-- Automatic fuzzing
 - Basic reporting function for each target. PDF format. Colour and severity coded?
 - Built in exploit module for metasploit
 - Custom scripts/plugins
@@ -13,13 +12,14 @@
 - Parse the output of the ffuf scans and display it in a more readable format. Maybe parse them to txt files for easy reading and access.
 - Start ffuf concurrently at the same time as the rest of the scan.
 - Extra commands. The config is broken and the feature does nothing for now.
+- Sort previous scans by date.
+- Let user choose their wordlist for ffuf. Right now it's hardcoded in ripley_cli.py.
+- Let user opt out of ffuf.
+
 ## Lower level stuff:
 - OS detection
 - For the robots file, sort it into allow and disallow and get AI to point out the most interesting parts. 
 - Remove 'multiple_targets' from config.
-- Make the 'view' button work in the previous_scans page.
-- Maybe add a different page for multiple scan previous results. Maybe add a new table in the db for them as well because currently, the table is designed to work for single scans only.
-- Acquiring the screenshot in the cli version is unoptimised because it currently performs two nmap scans (once at the beginning of ripley, and once again to check if the target is a webpage or not). This needs to be changed so that only 1 nmap scan is performed.
 - Searching previous scans
 - Learn the concurrency modules `concurrent.features` and `ThreadPoolExecuter()` for the writeup
 

@@ -6,7 +6,7 @@ CREATE TABLE config (
   targets_file TEXT,
   nmap_parameters TEXT,
   config_filepath TEXT,
-  extra_commands TEXT
+  ffuf_delay TEXT
 );
 
 -- "single_target": "",

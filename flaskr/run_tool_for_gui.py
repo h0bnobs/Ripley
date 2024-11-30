@@ -11,7 +11,7 @@ from flaskr import get_db
 from ripley_cli import run_host, run_nmap, run_http_get, run_smbclient, run_nikto, run_ftp, get_screenshot, \
     get_robots_file, run_dns_recon, run_ffuf_subdomain, is_target_webpage, run_ffuf_webpage
 from scripts.chatgpt_call import make_chatgpt_api_call
-from scripts.run_commands import run_command_no_output
+from scripts.run_commands import run_command_no_output, run_command_with_output_after
 from scripts.utils import remove_ansi_escape_codes, gui_banner, COLOURS, remove_leading_newline
 import concurrent.futures
 from flask import current_app
@@ -33,26 +33,41 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
         """
         with app.app_context():
             nmap_flags = config['nmap_parameters']
-            host_output = run_host(target)
+            tasks = []
             nmap_output = run_nmap(target, nmap_flags)
-            smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
-            print("")
-            print(f'{COLOURS["warn"]} Attempting to connect to ftp anonymously! {COLOURS["end"]}')
-            ftp_allowed = run_ftp(target)
+            # Check if target is a webpage
+            is_webpage = is_target_webpage(target)
+            if is_webpage:
+                print(f'{COLOURS["warn"]} Target is a webpage. Starting ffuf tasks concurrently. {COLOURS["end"]}')
+                with concurrent.futures.ThreadPoolExecutor() as ffuf_executor:
+                    tasks.append(ffuf_executor.submit(run_ffuf_webpage, target, delay=0.2))
+                    tasks.append(ffuf_executor.submit(get_robots_file, target))
+                    subdomain_target = target[4:] if target.startswith('www.') else target
+                    tasks.append(ffuf_executor.submit(run_ffuf_subdomain, subdomain_target))
+
+            # Start all other methods
+            tasks.append(run_host(target))
+            tasks.append(remove_ansi_escape_codes(run_smbclient(target)))
+            tasks.append(run_ftp(target))
+            tasks.append(run_dns_recon(target))
+
+            # Wait for all tasks to complete and gather results
+            results = [task.result() if isinstance(task, concurrent.futures.Future) else task for task in tasks]
+
+            # Extract ffuf results if applicable
+            ffuf_webpage_output = results.pop(0) if is_webpage else None
+            robots_output = results.pop(0).stdout if is_webpage else None
+            ffuf_subdomain_output = results.pop(0) if is_webpage else None
+
+            # Collect other results
+            host_output, smbclient_output, ftp_allowed, dns_recon_output = results
+
             ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored(
                 'Anonymous FTP login not allowed!', 'red')
             print(ftp_string)
-            if is_target_webpage(target):
-                print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
-                robots_output = get_robots_file(target).stdout
-                print(f'{COLOURS["warn"]} End of robots file. {COLOURS["end"]}\n')
-                if target.startswith('www.'):
-                    ffuf_temp_target = target[4:]
-                else:
-                    ffuf_temp_target = target
-                print(f'{COLOURS["warn"]} Attempting to find subdomains for {ffuf_temp_target}! {COLOURS["end"]}')
-                ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target)
-                print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
+
+            if is_webpage:
+                print(f'{COLOURS["warn"]} Getting screenshot for {target}! {COLOURS["end"]}')
                 screenshot_filepath = get_screenshot(target)
                 if screenshot_filepath:
                     os.makedirs('flaskr/static/screenshots', exist_ok=True)
@@ -60,14 +75,16 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
                     print(
                         f"{colored('Screenshot acquired and is stored in:', 'green')} {colored(f'flaskr/static/screenshots/{target}.png\n', 'red')}")
             else:
-                print(
-                    f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
-            print(f'{COLOURS["warn"]} Running dnsrecon! {COLOURS["end"]}')
-            dns_recon_output = run_dns_recon(target)
+                print(f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
+                screenshot_filepath = None
+                robots_output = None
+                ffuf_webpage_output = None
+                ffuf_subdomain_output = None
             result = {
                 'target': target,
                 'host_output': host_output,
                 'subdomain_enumeration': ffuf_subdomain_output,
+                'webpages_found': ffuf_webpage_output,
                 'dns_recon_output': dns_recon_output,
                 'nmap_output': nmap_output,
                 'smbclient_output': smbclient_output,
@@ -81,11 +98,12 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
             print(ai_advice)
             db = get_db()
             db.execute(
-                "INSERT INTO scan_results (target, host_output, subdomains_found, dns_recon_output, nmap_output, smbclient_output, ftp_result, screenshot, "
-                "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "INSERT INTO scan_results (target, host_output, subdomains_found, webpages_found, dns_recon_output, nmap_output, smbclient_output, ftp_result, screenshot, "
+                "robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (target,
                  host_output,
-                 ffuf_subdomain_output,
+                 remove_leading_newline(remove_ansi_escape_codes(ffuf_subdomain_output)),
+                 remove_leading_newline(remove_ansi_escape_codes(ffuf_webpage_output)),
                  dns_recon_output,
                  nmap_output,
                  smbclient_output,
@@ -103,18 +121,6 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
         for future in concurrent.futures.as_completed(futures):
             file_paths.append(future.result())
     return file_paths
-    # dns_recon_output = run_dns_recon(target)
-        # dns_recon_string = f'[*] dnsrecon output:'
-
-
-        # nikto comes back with errors most of the time. mainly these:
-        # + ERROR: Error limit (20) reached for host, giving up. Last error: error reading HTTP response
-        # + Scan terminated: 19 error(s) and 2 item(s) reported on remote host
-        # nikto_output = run_nikto(target)
-
-    #     results.append(f"{host_string}\n{host_output}\n{nmap_string}\n{nmap_output}\n{httpget_string}\n{httpget_output}\n{smbclient_string}"
-    #                    f"\n{smbclient_output}\n{ftp_string}\n{screenshot_string}\n{robots_string}\n")
-    # return "\n".join(results)
 
 
 def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
@@ -172,27 +178,72 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
         'screenshot': f'static/screenshots/{target}.png' if screenshot_filepath else "[*] Couldn't get a screenshot of the target!",
         'robots_file': robots_output
     }
-    ai_advice = make_chatgpt_api_call(result)
-    result["ai_advice"] = ai_advice
-    filepath = save_scan_results_to_tempfile(result)
-    print(ai_advice)
-    db = get_db()
-    db.execute(
-        "INSERT INTO scan_results (target, host_output, subdomains_found, webpages_found, dns_recon_output, "
-        "nmap_output, smbclient_output, ftp_result, screenshot, robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, "
-        "?, ?, ?, ?, ?)",
-        (target,
-         host_output,
-         remove_leading_newline(remove_ansi_escape_codes(ffuf_subdomain_output)),
-         remove_leading_newline(remove_ansi_escape_codes(ffuf_webpage_output)),
-         dns_recon_output,
-         nmap_output,
-         smbclient_output,
-         ftp_string,
-         screenshot_filepath,
-         robots_output,
-         ai_advice))
-    db.commit()
+
+    # right here we do the extra command(s) execution, then add it to result.
+    # get all the commands from flaskr/static/temp/extra_commands.txt, add the single target
+    with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
+        extra_commands = [command.strip().replace('{target}', target) for command in f.readlines()]
+
+    if extra_commands:
+        command_output = []
+        for command in extra_commands:
+            command = f'{command.strip()}'
+            print(f'{COLOURS["warn"]} Running extra command: {command}!{COLOURS["end"]}')
+            command_output.append(remove_ansi_escape_codes(run_command_with_output_after(command).stdout))
+
+        result["extra_commands_output"] = command_output
+        ai_advice = make_chatgpt_api_call(result)
+        result["ai_advice"] = ai_advice
+        filepath = save_scan_results_to_tempfile(result)
+        #print(ai_advice)
+        db = get_db()
+        db.execute(
+            "INSERT INTO scan_results (target, host_output, subdomains_found, webpages_found, dns_recon_output, "
+            "nmap_output, smbclient_output, ftp_result, screenshot, robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, "
+            "?, ?, ?, ?, ?)",
+            (target,
+             host_output,
+             remove_leading_newline(remove_ansi_escape_codes(ffuf_subdomain_output)),
+             remove_leading_newline(remove_ansi_escape_codes(ffuf_webpage_output)),
+             dns_recon_output,
+             nmap_output,
+             smbclient_output,
+             ftp_string,
+             screenshot_filepath,
+             robots_output,
+             ai_advice))
+        db.commit()
+
+        scan_num = db.execute("SELECT MAX(scan_num) FROM scan_results").fetchone()[0]
+
+        for command in extra_commands:
+            db.execute(
+                "INSERT INTO extra_commands (scan_num, command, command_output) VALUES (?, ?, ?)",
+                (scan_num, command.strip(), command_output.pop(0))
+            )
+        db.commit()
+    else:
+        ai_advice = make_chatgpt_api_call(result)
+        result["ai_advice"] = ai_advice
+        filepath = save_scan_results_to_tempfile(result)
+        print(ai_advice)
+        db = get_db()
+        db.execute(
+            "INSERT INTO scan_results (target, host_output, subdomains_found, webpages_found, dns_recon_output, "
+            "nmap_output, smbclient_output, ftp_result, screenshot, robots_output, ai_advice) VALUES (?, ?, ?, ?, ?, ?, "
+            "?, ?, ?, ?, ?)",
+            (target,
+             host_output,
+             remove_leading_newline(remove_ansi_escape_codes(ffuf_subdomain_output)),
+             remove_leading_newline(remove_ansi_escape_codes(ffuf_webpage_output)),
+             dns_recon_output,
+             nmap_output,
+             smbclient_output,
+             ftp_string,
+             screenshot_filepath,
+             robots_output,
+             ai_advice))
+        db.commit()
     return filepath
 
 
