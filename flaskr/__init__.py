@@ -130,6 +130,7 @@ def create_app(test_config=None) -> Flask:
         # we need to change the screenshot from 'output/{target}' to the location of the ss inside the flaskr directory.
         # if the screenshot isn't there then its fine, it'll just display a message.
         result['screenshot'] = f'static/screenshots/{result["target"]}.png'
+        result["extra_commands_output"] = [row['command_output'] for row in db.execute(f"SELECT command_output FROM extra_commands WHERE scan_num = {result['scan_num']}").fetchall()]
         return render_template('previous_scan_single_target.html', result=result)
 
     @app.route('/add-commands', methods=['POST', 'GET'])

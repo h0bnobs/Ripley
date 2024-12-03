@@ -54,7 +54,8 @@
     "multiple_targets": {{ entry['multiple_targets'] | tojson }},
     "targets_file": "{{ entry['targets_file'] }}",
     "nmap_parameters": "{{ entry['nmap_parameters'] }}",
-    "config_filepath": "{{ entry['config_filepath'] }}"
+    "config_filepath": "{{ entry['config_filepath'] }}",
+    "ffuf_delay": "{{ entry['ffuf_delay'] }}"
     {% if not loop.last %},{% endif %}
     {% endfor %}
 }'>

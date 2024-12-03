@@ -90,3 +90,11 @@
 30/11/24 12:40pm
 - Added the ability for the user to add their own commands to the tool, for single scans only.
 - Reworked the concurrency code so that ffuf subdomain and webpage enumeration is run at the same time as the group of all of the other concurrent scans.
+
+### Tuesday 3rd December
+03/12/24 05:10pm
+- Added the add commands tool for multiple scans.
+- Added wpscan to the webpage ffuf scan thread pool.
+- Integrated 'ffuf_delay' into the config and the ffuf methods.
+- Added the ability to sort previous scans by scan_num.
+- 

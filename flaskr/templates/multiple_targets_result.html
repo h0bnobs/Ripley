@@ -65,6 +65,16 @@
             <pre>{{ result['robots_file'] }}</pre>
         </div>
 
+        <div class="collapsible">Wpscan Output:</div>
+        <div class="content inner-content">
+            <pre>{{ result['wpscan_output'] }}</pre>
+        </div>
+
+        <div class="collapsible">Extra commands ran:</div>
+        <div class="content inner-content">
+            <pre>{% for command in result['extra_commands_output'] %}{{ command }}<br>{% endfor %}</pre>
+        </div>
+
         <div class="collapsible">Recommendations:</div>
         <div class="content inner-content">
             <pre>{{ result['ai_advice'] }}</pre>

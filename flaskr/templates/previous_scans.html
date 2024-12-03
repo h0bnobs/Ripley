@@ -20,13 +20,16 @@
 </head>
 <body>
 <h2>Previous Scans</h2>
-<table border="1">
+<button onclick="window.location.href='/'">Back</button><br><br>
+<table border="1" id="scansTable">
     <thead>
     <tr>
         <th>Target</th>
         <th>Scan start time</th>
         <th>Scan number</th>
-        <th class="button-cell" style="border: none"></th>
+        <th class="button-cell" style="border: none">
+            <button id="sortButton" onclick="toggleSort()">Sort</button>
+        </th>
     </tr>
     </thead>
     <tbody>
@@ -45,5 +48,31 @@
     {% endfor %}
     </tbody>
 </table>
+
+<script>
+    let isAscending = false;
+
+    function toggleSort() {
+        const table = document.getElementById('scansTable').tBodies[0];
+        const rows = Array.from(table.rows);
+
+        rows.sort((a, b) => {
+            const scanNumA = parseInt(a.cells[2].textContent, 10);
+            const scanNumB = parseInt(b.cells[2].textContent, 10);
+            return isAscending ? scanNumA - scanNumB : scanNumB - scanNumA;
+        });
+
+        rows.forEach(row => table.appendChild(row));
+
+        isAscending = !isAscending;
+
+        const sortButton = document.getElementById('sortButton');
+        sortButton.textContent = isAscending ? 'Sort' : 'Sort';
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        toggleSort();
+    });
+</script>
 </body>
 </html>

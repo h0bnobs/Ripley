@@ -8,13 +8,12 @@
 - Add verbose levels to cli version?
 - Get all the tools needed beforehand?
 - Asynchronous scanning mainly for things like nikto and webpage enumeration because they can take a long time.
-- Let the user add their own tools/commands to the entire scan, eg let them run a tool that isn't yet in ripley, or let them run their own scripts.
 - Parse the output of the ffuf scans and display it in a more readable format. Maybe parse them to txt files for easy reading and access.
-- Start ffuf concurrently at the same time as the rest of the scan.
-- Extra commands. The config is broken and the feature does nothing for now.
-- Sort previous scans by date.
 - Let user choose their wordlist for ffuf. Right now it's hardcoded in ripley_cli.py.
 - Let user opt out of ffuf.
+- Correctly get a target from the multiple targets when displaying the command in extra commands.
+- A way for the user to save extra commands they wanna run and use the same ones instead of typing them out each time.
+- Let users select which HTTP response codes to ignore in the output of ffuf.
 
 ## Lower level stuff:
 - OS detection

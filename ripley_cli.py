@@ -2,8 +2,9 @@ import argparse
 import ftplib
 import os
 import time
+from argparse import Namespace
 from subprocess import CompletedProcess, CalledProcessError
-from typing import List, Dict, Type
+from typing import List, Dict, Type, IO
 import re
 import concurrent.futures
 from selenium.common import WebDriverException
@@ -20,13 +21,21 @@ from selenium import webdriver
 from webdriver_manager.chrome import ChromeDriverManager
 
 
-def parse_args():
+def parse_args() -> Namespace:
+    """
+    Parses the arguments from the command line.
+    :return: The parsed arguments.
+    """
     parser = argparse.ArgumentParser(description="ripley - One stop basic web app scanner.")
     parser.add_argument("-c", "--config", dest="config", required=False, help="Config text file")
     return parser.parse_args()
 
 
 def main():
+    """
+    Function that runs the tool.
+    :return:
+    """
     from flaskr import create_app
     app = create_app()
     with app.app_context():
@@ -95,7 +104,8 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> N
     :param config: The configuration file as a dictionary.
     :return: None
     """
-    def process_target(app, target: str):
+
+    def process_target(app, target: str) -> None:
         """
         Processes a single target.
         :param app: The flask app.
@@ -139,7 +149,8 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> N
                     print(
                         f"{colored('Screenshot acquired and is stored in:', 'green')} {colored(f'flaskr/static/screenshots/{target}.png\n', 'red')}")
             else:
-                print(f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
+                print(
+                    f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
 
             print(f'{COLOURS["warn"]} Running dnsrecon on {target}! {COLOURS["end"]}')
             dns_recon_output = run_dns_recon(target)
@@ -181,7 +192,6 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> N
         futures = {executor.submit(process_target, a, target): target for target in target_list}
 
 
-
 def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None:
     """
     Runs the tool on one target given as a list.
@@ -192,11 +202,13 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None
     nmap_flags = config['nmap_parameters']
     host_output = run_host(target)
     nmap_output = run_nmap(target, nmap_flags)
+    wpscan_output = run_wpscan(target)
     smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
     print("")
     print(f'{COLOURS["warn"]} Attempting to connect to ftp anonymously! {COLOURS["end"]}')
     ftp_allowed = run_ftp(target)
-    ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored('Anonymous FTP login not allowed!', 'red')
+    ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored(
+        'Anonymous FTP login not allowed!', 'red')
     print(ftp_string)
     if is_target_webpage(target):
         print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
@@ -216,9 +228,11 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None
         if screenshot_filepath:
             os.makedirs('flaskr/static/screenshots', exist_ok=True)
             run_command_no_output(f'cp {screenshot_filepath} flaskr/static/screenshots/{target}.png')
-            print(f"{colored('Screenshot acquired and is stored in:', 'green')} {colored(f'flaskr/static/screenshots/{target}.png\n', 'red')}")
+            print(
+                f"{colored('Screenshot acquired and is stored in:', 'green')} {colored(f'flaskr/static/screenshots/{target}.png\n', 'red')}")
     else:
-        print(f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
+        print(
+            f'{COLOURS["warn"]} Target is not a webpage, skipping screenshot, subdomain/web page enumeration and the robots file! {COLOURS["end"]}')
     print(f'{COLOURS["warn"]} Running dnsrecon! {COLOURS["end"]}')
     dns_recon_output = run_dns_recon(target)
     result = {
@@ -267,6 +281,7 @@ def is_target_webpage(target: str) -> bool:
         return True
     return False
 
+
 def run_nmap(target: str, flags: str) -> str:
     """
     Runs the nmap tool on the target. Saves the output to a xml file in the flaskr/static/temp folder, which is cleared everytime the tool runs.
@@ -302,11 +317,11 @@ def run_ftp(target: str) -> bool:
         ftp = ftplib.FTP(timeout=10)
         ftp.connect(target)
         ftp.login('anonymous', '')
-        print(f'{COLOURS["star"]} Anonymous FTP login successful!')
+        print(f'{COLOURS["star"]} Anonymous FTP login successful!{COLOURS["end"]}')
         ftp.quit()
         return True
     except (ftplib.error_perm, Exception) as e:
-        print(f'Failed to connect to ftp server!')
+        print(f'{COLOURS["warn"]} Anonymous FTP not allowed! {COLOURS["end"]}')
         return False
 
 
@@ -319,11 +334,13 @@ def run_ffuf_subdomain(target: str, delay=0) -> str:
     """
     # todo: get the wordlist! Also look for a smaller one.
     # /usr/share/wordlists/n0kovo_subdomains_tiny.txt
+    print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
     if delay != 0:
-        command = f'ffuf -w /usr/share/wordlists/n0kovo_subdomains_tiny.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt -p {delay}'
+        command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt -p {delay}'
     else:
         command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt'
     result = run_command_live_output(command)
+    print(f'{COLOURS["warn"]} End of subdomains! {COLOURS["end"]}')
     # print(result)
     return result
 
@@ -335,28 +352,35 @@ def run_ffuf_webpage(target: str, delay=0) -> str:
     :param target: The target to run ffuf on.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
+    print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
     if delay != 0:
         command = f'ffuf -w test_dictionary.txt -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500 -p {delay}'
     else:
         command = f'ffuf -w test_dictionary.txt -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500'
     result = run_command_live_output(command)
+    print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
     return result
 
 
-def get_ipv4_addresses(domain):
-    # Run the dig command
+def get_ipv4_addresses(domain: str) -> List[str]:
+    """
+    Get the IPv4 addresses for a domain using the dig command.
+    :param domain: The domain to get the IPv4 addresses for.
+    :return: A list of IPv4 addresses.
+    """
     result = subprocess.run(['dig', domain, 'A', '+short'], stdout=subprocess.PIPE)
     output = result.stdout.decode('utf-8')
-
-    # Define a regex pattern for IPv4 addresses
     ipv4_pattern = re.compile(r'^\d{1,3}(\.\d{1,3}){3}$')
-
-    # Extract and filter IPv4 addresses
     ipv4_addresses = [line for line in output.split('\n') if ipv4_pattern.match(line)]
     return ipv4_addresses
 
 
-def run_smbclient(target):
+def run_smbclient(target: str) -> IO[str | bytes] | None | str:
+    """
+    Runs the smbclient tool to list shares on the target.
+    :param target: The target to run smbclient on.
+    :return:
+    """
     # if you want to test this properly: https://app.hackthebox.com/machines/186 - box name is bastion and has open
     # smb shares.
     command = f"smbclient -L {target}"
@@ -376,7 +400,12 @@ def run_smbclient(target):
         return error_message
 
 
-def run_http_get(target):
+def run_http_get(target: str) -> subprocess.Popen[str | bytes] | str:
+    """
+    Runs the http-get tool on the target.
+    :param target: The target to run http-get on.
+    :return: The output of the http-get tool as a string or a CalledProcessError.
+    """
     print(COLOURS["warn"] + " http-get will start now" + COLOURS["end"])
     file_name = "./scripts/http_get_targets.txt"
     final = f"python scripts/http-get-improved.py -i scripts/http_get_targets.txt"
@@ -393,16 +422,20 @@ def run_http_get(target):
         return f'{COLOURS["cross"]} http-get encountered an error. Are you sure the target is correct and is hosting a valid webservice?\n'
 
 
-def run_nikto(target):
+def run_nikto(target: str) -> str:
+    """
+    Runs the nikto tool on the target.
+    :param target: The target to run nikto on.
+    :return: The output of the nikto tool as a string or a CalledProcessError.
+    """
     command = f"nikto -host {target}"
     try:
         print(f'{COLOURS["warn"]} Nikto now running. {COLOURS["end"]}')
         result = run_command_live_output(command)
         # result = run_command_with_output_after(command)
-        return result.stdout
+        return result
     except subprocess.CalledProcessError as e:
-        error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
-        return error_message
+        return f"An error occurred: {e}"
 
 
 def run_showmount(target):
@@ -422,6 +455,7 @@ def get_robots_file(target: str) -> CompletedProcess[str] | CalledProcessError |
     :param target: The target server.
     :return: Returns the completed process.
     """
+    print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
     attempts = [
         f'https://{target}/robots.txt',
         f'http://{target}/robots.txt',
@@ -433,6 +467,7 @@ def get_robots_file(target: str) -> CompletedProcess[str] | CalledProcessError |
                 return r
         except subprocess.TimeoutExpired:
             continue
+    print(f'{COLOURS["warn"]} End of robots file! {COLOURS["end"]}')
     return CompletedProcess
     # return run_command_with_output_after(f'curl https://{target}/robots.txt')
 
@@ -443,6 +478,7 @@ def run_dns_recon(target: str) -> str:
     :param target: The target domain.
     :return: The live output of the dnsrecon tool.
     """
+    print(f'{COLOURS["warn"]} Running dnsrecon! {COLOURS["end"]}')
     if target.startswith('www.'):
         return run_command_live_output(f"dnsrecon -d {target.replace('www.', '', 1)}")
     else:
@@ -455,6 +491,7 @@ def get_screenshot(target: str) -> str:
     :param target: The target webpage.
     :return: The full filepath of the screenshot.
     """
+    print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
     os.makedirs("output", exist_ok=True)
     attempts = [
         f'https://{target}',
@@ -481,18 +518,28 @@ def get_screenshot(target: str) -> str:
         raise Exception(f"Could not connect to {target} using any protocol.")
 
 
-def run_wpscan(target):
-    command = f'wpscan {target} --random-user-agent'
-    print(COLOURS["warn"] + " wpscan will now attempt to scan the remote host: " + target + COLOURS["end"])
+def run_wpscan(target: str) -> str:
+    """
+    Runs the wpscan tool on the target.
+    :param target: The target to run wpscan on.
+    :return: The output of the wpscan tool as a string or a CalledProcessError.
+    """
+    # wpscan works both with https:// at the start of the target and without
+    command = f'wpscan --url {target} --random-user-agent'
+    print(f'{COLOURS["warn"]} Running wpscan! {COLOURS["end"]}')
     try:
-        result = run_command_with_output_after(command)
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
-        return error_message
+        result = run_command_live_output(command)
+        return result
+    except Exception as e:
+        return f"Wpscan failed!"
 
 
-def run_host(target: str):
+def run_host(target: str) -> str:
+    """
+    Runs the host command on the target.
+    :param target: The target to run host on.
+    :return: The output of the host command as a string.
+    """
     command = f'host {target}'
     if target.startswith('www.'):
         one = run_command_with_output_after(f'host {target.split("www.")[1]}')
