@@ -13,6 +13,7 @@ Modules:
 import json
 import os
 import time
+from crypt import methods
 
 from flask import Flask, render_template, request, redirect, url_for, session, Response
 
@@ -73,13 +74,60 @@ def create_app(test_config=None) -> Flask:
         config_entries = db.execute("SELECT * FROM config").fetchall()
         config = [dict(entry) for entry in config_entries]
         targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0]['targets_file'] else None
-        print(config)
+        #print(config)
         with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
             extra_commands = f.readlines()
         if targets is None:
             return render_template('index.html', results=config, extra_commands=extra_commands)
         else:
             return render_template('index.html', results=config, targets=targets, extra_commands=extra_commands)
+
+    @app.route('/upload-file', methods=['POST'])
+    def check_file():
+        """
+        This is for the "Upload Files" button on the main/home page. It checks if the file is a valid file, and if it is,
+        it writes the contents of the file to a temporary file in the static/temp directory and updates the config.
+        :return: The redirect to the main/home page.
+        """
+        file = request.files['file']
+        if file.filename.endswith('.json'):
+            upload_dir = os.path.join(app.root_path, 'uploaded_configs')
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, f'{time.strftime("%d%m_%H%M%S")}_{file.filename}')
+            file.save(file_path)
+
+            with open(file_path, 'r') as f:
+                new_config = json.load(f)
+
+            db = get_db()
+            db.execute(
+                "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?",
+                (new_config.get('single_target', ''),
+                 new_config.get('multiple_targets', ''),
+                 new_config.get('targets_file', ''),
+                 new_config.get('nmap_parameters', ''),
+                 new_config.get('config_filepath', ''),
+                 new_config.get('ffuf_delay', ''))
+            )
+            db.commit()
+
+            with open(new_config.get('config_filepath'), 'w') as file:
+                json.dump(new_config, file, indent=4)
+
+            config_entries = db.execute("SELECT * FROM config").fetchall()
+            config = [dict(entry) for entry in config_entries]
+            targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0][
+                'targets_file'] else None
+
+            with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
+                extra_commands = f.readlines()
+
+            if targets is None:
+                return render_template('index.html', results=config, extra_commands=extra_commands)
+            else:
+                return render_template('index.html', results=config, targets=targets, extra_commands=extra_commands)
+        else:
+            return "Something went wrong. Please upload a JSON file."
 
     @app.route('/view-targets-file')
     def view_targets_file() -> tuple[str, int] | Response:
@@ -194,7 +242,7 @@ def create_app(test_config=None) -> Flask:
             config_data["nmap_parameters"] = row["nmap_parameters"]
             config_data["config_filepath"] = row["config_filepath"]
             config_data["ffuf_delay"] = row["ffuf_delay"]
-            with open('config.json', 'w') as file:
+            with open(config_data["config_filepath"], 'w') as file:
                 json.dump(config_data, file, indent=4)
         else:
             print("No data found in the config table.")

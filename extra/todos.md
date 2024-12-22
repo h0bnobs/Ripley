@@ -14,6 +14,10 @@
 - Correctly get a target from the multiple targets when displaying the command in extra commands.
 - A way for the user to save extra commands they wanna run and use the same ones instead of typing them out each time.
 - Let users select which HTTP response codes to ignore in the output of ffuf.
+- Let user edit commands in extra commands.
+- Host discovery on a range of IPs. Either '->' or '-' or '/ notation'. Ping sweep?
+- Add a way to save the output of the scans to a file. Button on results page?
+
 
 ## Lower level stuff:
 - OS detection
