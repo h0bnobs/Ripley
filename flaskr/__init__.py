@@ -74,9 +74,14 @@ def create_app(test_config=None) -> Flask:
         config_entries = db.execute("SELECT * FROM config").fetchall()
         config = [dict(entry) for entry in config_entries]
         targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0]['targets_file'] else None
-        #print(config)
-        with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
-            extra_commands = f.readlines()
+
+        extra_commands_filename = config[0].get('extra_commands_file')
+        extra_commands = None
+
+        if extra_commands_filename:
+            with open(extra_commands_filename) as f:
+                extra_commands = f.readlines()
+
         if targets is None:
             return render_template('index.html', results=config, extra_commands=extra_commands)
         else:
@@ -119,8 +124,10 @@ def create_app(test_config=None) -> Flask:
             targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0][
                 'targets_file'] else None
 
-            with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
-                extra_commands = f.readlines()
+            extra_commands_filename = config[0].get('extra_commands_file')
+            if extra_commands_filename:
+                with open(extra_commands_filename, 'r') as f:
+                    extra_commands = f.readlines()
 
             if targets is None:
                 return render_template('index.html', results=config, extra_commands=extra_commands)
@@ -192,19 +199,20 @@ def create_app(test_config=None) -> Flask:
         db = get_db()
         config_entries = db.execute("SELECT * FROM config").fetchall()
         config = [dict(entry) for entry in config_entries]
+        extra_commands_filename = config[0]['extra_commands_file']
         if request.method == 'POST':
             form_data = request.form
             command = form_data.get('command').strip()
-            with open('flaskr/static/temp/extra_commands.txt', 'a') as f:
+            with open(extra_commands_filename, 'a') as f:
                 f.write(f'{command}\n')
                 #print(command, file=f)
-            with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
+            with open(extra_commands_filename, 'r') as f:
                 extra_commands = f.readlines()
             return render_template('add_commands.html', config=config, extra_commands=extra_commands)
 
-        with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
-            extra_commands = f.readlines()
         #if GET, render the page with config and any commands that have already been added
+        with open(extra_commands_filename, 'r') as f:
+            extra_commands = f.readlines()
         return render_template('add_commands.html', config=config, extra_commands=extra_commands)
 
     @app.route('/update-config', methods=['POST'])
@@ -218,19 +226,20 @@ def create_app(test_config=None) -> Flask:
         new_config = json.loads(request.form['config'])
         db = get_db()
         db.execute(
-            "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?",
+            "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?, extra_commands_file = ?",
             (new_config['single_target'],
              new_config['multiple_targets'],
              new_config['targets_file'],
              new_config['nmap_parameters'],
              new_config['config_filepath'],
-             new_config['ffuf_delay'])
+             new_config['ffuf_delay'],
+             new_config['extra_commands_file'])
         )
         db.commit()
 
         # now we update config.json in the directory root
         cursor = db.execute(
-            "SELECT single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, ffuf_delay FROM config")
+            "SELECT single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file FROM config")
         row = cursor.fetchone()
         if row:
             config_filepath = row["config_filepath"]
@@ -242,6 +251,7 @@ def create_app(test_config=None) -> Flask:
             config_data["nmap_parameters"] = row["nmap_parameters"]
             config_data["config_filepath"] = row["config_filepath"]
             config_data["ffuf_delay"] = row["ffuf_delay"]
+            config_data["extra_commands_file"] = row["extra_commands_file"]
             with open(config_data["config_filepath"], 'w') as file:
                 json.dump(config_data, file, indent=4)
         else:
@@ -318,6 +328,24 @@ def create_app(test_config=None) -> Flask:
         else:
             raise Exception("Target list empty!")
 
+    @app.route('/remove-extra-command', methods=['POST'])
+    def remove_extra_command():
+        """
+        This is for the button on the add commands page that says "Remove" for each command.
+        :return: The render template of the add commands html file with the command removed.
+        """
+        command_to_remove = request.form['command'].strip()
+        db = get_db()
+        config = db.execute("SELECT * FROM config").fetchall()
+        config = [dict(entry) for entry in config]
+        extra_commands_filename = config[0]['extra_commands_file']
+        with open(extra_commands_filename, 'r') as f:
+            commands = f.readlines()
+        commands = [cmd for cmd in commands if cmd.strip() != command_to_remove]
+        with open(extra_commands_filename, 'w') as f:
+            f.writelines(commands)
+        return render_template('add_commands.html', config=config, extra_commands=commands)
+
     from . import db
     db.init_app(app)
     with app.app_context():
@@ -339,12 +367,13 @@ def load_config_into_db() -> None:
     db = get_db()
     if config:
         db.execute(
-            "INSERT INTO config (single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, ffuf_delay) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO config (single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (config.get('single_target', ''),
              config.get('multiple_targets', ''),
              config.get('targets_file', ''),
              config.get('nmap_parameters', ''),
              config_filepath,
-             config.get('ffuf_delay', ''))
+             config.get('ffuf_delay', ''),
+             config.get('extra_commands_file', ''))
         )
         db.commit()

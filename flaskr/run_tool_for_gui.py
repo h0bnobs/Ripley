@@ -88,8 +88,10 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
                 'wpscan_output': remove_ansi_escape_codes(wpscan_output)
             }
 
-            with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
-                extra_commands = [command.strip().replace('{target}', target) for command in f.readlines()]
+            extra_commands_filename = config['extra_commands_file']
+            if extra_commands_filename:
+                with open(extra_commands_filename, 'r') as f:
+                    extra_commands = [command.strip().replace('{target}', target) for command in f.readlines()]
 
             if extra_commands:
                 command_output = []
@@ -195,8 +197,10 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
 
     # right here we do the extra command(s) execution, then add it to result.
     # get all the commands from flaskr/static/temp/extra_commands.txt, add the single target
-    with open('flaskr/static/temp/extra_commands.txt', 'r') as f:
-        extra_commands = [command.strip().replace('{target}', target) for command in f.readlines()]
+    extra_commands_filename = config['extra_commands_file']
+    if extra_commands_filename:
+        with open(extra_commands_filename, 'r') as f:
+            extra_commands = [command.strip().replace('{target}', target) for command in f.readlines()]
 
     if extra_commands:
         command_output = []

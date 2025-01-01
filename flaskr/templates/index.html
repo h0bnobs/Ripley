@@ -50,7 +50,8 @@
    "targets_file": "{{ entry['targets_file'] }}",
    "nmap_parameters": "{{ entry['nmap_parameters'] }}",
    "config_filepath": "{{ entry['config_filepath'] }}",
-   "ffuf_delay": "{{ entry['ffuf_delay'] }}"
+   "ffuf_delay": "{{ entry['ffuf_delay'] }}",
+   "extra_commands_file": "{{ entry['extra_commands_file'] }}"
 }
 {% if not loop.last %},{% endif %}{% endfor %}</textarea>
     <br>
@@ -65,7 +66,8 @@
     "targets_file": "{{ entry['targets_file'] }}",
     "nmap_parameters": "{{ entry['nmap_parameters'] }}",
     "config_filepath": "{{ entry['config_filepath'] }}",
-    "ffuf_delay": "{{ entry['ffuf_delay'] }}"
+    "ffuf_delay": "{{ entry['ffuf_delay'] }}",
+    "extra_commands_file": "{{ entry['extra_commands_file'] }}"
     {% if not loop.last %},{% endif %}
     {% endfor %}
 }'>
@@ -90,7 +92,7 @@
     <button class="btn_margin" type="submit">View last scans</button>
 </form>
 <form action="/add-commands" method="GET">
-    <button class="btn_margin" type="submit">Add a command</button>
+    <button class="btn_margin" type="submit">Add/Edit commands</button>
 </form>
 {% if extra_commands %}
     <h4>Extra command(s) to be run:</h4>

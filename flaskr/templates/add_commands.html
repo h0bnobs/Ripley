@@ -45,14 +45,15 @@
 
 {% if extra_commands %}
     <h4>Extra command(s) to be run:</h4>
-    <p id="commands-display"></p>
-    <script>
-        $(document).ready(function() {
-            var commands = {{ extra_commands|tojson }};
-            var commandsText = commands.join('<br>');
-            $('#commands-display').html(commandsText);
-        });
-    </script>
+    <div id="commands-display">
+        <form action="/remove-extra-command" method="POST">
+            {% for command in extra_commands %}
+                <p>{{ command }}
+                    <button type="submit" name="command" value="{{ command }}">Remove Command</button>
+                </p>
+            {% endfor %}
+        </form>
+    </div>
 {% endif %}
 </body>
 </html>

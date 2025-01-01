@@ -31,3 +31,8 @@
 - The option to save configs and reuse them
 - Better way to select/input options to edit the config file
 - Make it look nice.
+
+
+## Issues to look into:
+- robots being run twice on single scan?
+- extra commands not showing when extra_commands.txt in proj root is empty and commands are added via gui.

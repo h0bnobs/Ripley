@@ -97,4 +97,12 @@
 - Added wpscan to the webpage ffuf scan thread pool.
 - Integrated 'ffuf_delay' into the config and the ffuf methods.
 - Added the ability to sort previous scans by scan_num.
-- 
+
+### Sunday 22nd December
+22/12/24 03:30pm
+- Added the ability to upload config files.
+
+### Wednesday 1st January
+01/01/25 03:15pm
+- Added the ability to remove added commands.
+- The whole `added commands` feature is now reliant on the `extra_commands_file` in the config. The extra_commands.txt file from `flaskr/static/temp` is now deprecated and gone.
