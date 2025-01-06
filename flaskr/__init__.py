@@ -75,6 +75,10 @@ def create_app(test_config=None) -> Flask:
         config = [dict(entry) for entry in config_entries]
         targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0]['targets_file'] else None
 
+        duplicate_targets = False
+        if config[0]['single_target'] != '' and config[0]['targets_file'] != '':
+            duplicate_targets = True
+
         extra_commands_filename = config[0].get('extra_commands_file')
         extra_commands = None
 
@@ -82,10 +86,17 @@ def create_app(test_config=None) -> Flask:
             with open(extra_commands_filename) as f:
                 extra_commands = f.readlines()
 
+        #gets the relevant files in the current working directory
+        files_in_dir = sorted(
+            [file for file in os.listdir(os.getcwd()) if
+             (file.endswith('.json') or file.endswith('.txt') or file.endswith('.py')) and file != 'requirements.txt'],
+            key=lambda x: (not x.endswith('.json'), not x.endswith('.txt'), not x.endswith('.py'))
+        )
+
         if targets is None:
-            return render_template('index.html', results=config, extra_commands=extra_commands)
+            return render_template('index.html', duplicate_targets=duplicate_targets, results=config, current_directory=os.getcwd(), files_in_directory=files_in_dir, extra_commands=extra_commands)
         else:
-            return render_template('index.html', results=config, targets=targets, extra_commands=extra_commands)
+            return render_template('index.html', duplicate_targets=duplicate_targets, results=config, targets=targets, current_directory=os.getcwd(), files_in_directory=files_in_dir, extra_commands=extra_commands)
 
     @app.route('/upload-file', methods=['POST'])
     def check_file():
@@ -211,9 +222,12 @@ def create_app(test_config=None) -> Flask:
             return render_template('add_commands.html', config=config, extra_commands=extra_commands)
 
         #if GET, render the page with config and any commands that have already been added
-        with open(extra_commands_filename, 'r') as f:
-            extra_commands = f.readlines()
-        return render_template('add_commands.html', config=config, extra_commands=extra_commands)
+        try:
+            with open(extra_commands_filename, 'r') as f:
+                extra_commands = f.readlines()
+                return render_template('add_commands.html', config=config, extra_commands=extra_commands)
+        except FileNotFoundError:
+            return error(f"No extra commands file found in {config[0]['config_filepath']}. Please review your config and try again!", url_for('index'))
 
     @app.route('/update-config', methods=['POST'])
     def update_config() -> Response:
@@ -346,15 +360,27 @@ def create_app(test_config=None) -> Flask:
             f.writelines(commands)
         return render_template('add_commands.html', config=config, extra_commands=commands)
 
+    @app.errorhandler(500)
+    def internal_error(error):
+        return render_template('error.html', error_message="Internal server error!", redirect=url_for('index')), 500
+
+    def error(error_msg: str, full_redirect: str):
+        """
+        This is for the error page.
+        :param error_msg: The error message to display.
+        :param full_redirect: The full redirect link, eg http://localhost:5000/
+        :return: The render template of the error html file.
+        """
+        return render_template('error.html', error_message=error_msg, redirect=full_redirect)
+
     from . import db
     db.init_app(app)
     with app.app_context():
         init_db()
-        load_config_into_db()
+        load_config_into_db(config)
     return app
 
-
-def load_config_into_db() -> None:
+def load_config_into_db(config: dict) -> None:
     """
     Gets the config from the root directory and puts it into the config table in the db.
     """

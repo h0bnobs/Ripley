@@ -72,6 +72,9 @@
     {% endfor %}
 }'>
     <button class="btn_margin" type="submit">Run Ripley</button>
+    {% if duplicate_targets %}
+        <p style="color: red; display: inline;">Warning: Cannot have 'single_target' and 'targets_file' both populated in the config!</p>
+    {% endif %}
 </form>
 
 {% if targets %}
@@ -105,5 +108,27 @@
         });
     </script>
 {% endif %}
+
+<h3>Currently working in {{ current_directory }}</h3>
+
+<!-- Button to toggle file list visibility -->
+<button id="toggle-files-btn" class="btn_margin">Toggle Relevant Files in Working Directory</button>
+<div id="files-list" style="display: none;">
+    <h4>Relevant files in the current directory:</h4>
+    <ul>
+        {% for file in files_in_directory %}
+        <li>{{ file }}</li>
+        {% endfor %}
+    </ul>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#toggle-files-btn').click(function() {
+            $('#files-list').toggle();
+        });
+    });
+</script>
+
 </body>
 </html>

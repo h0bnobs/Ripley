@@ -1,5 +1,8 @@
 # Todo
 
+## Biggest:
+- The config is still hardcoded in init.py
+
 ## Big picture things:
 - HTTP response editor for webapps
 - Basic reporting function for each target. PDF format. Colour and severity coded?

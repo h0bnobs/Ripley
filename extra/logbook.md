@@ -106,3 +106,12 @@
 01/01/25 03:15pm
 - Added the ability to remove added commands.
 - The whole `added commands` feature is now reliant on the `extra_commands_file` in the config. The extra_commands.txt file from `flaskr/static/temp` is now deprecated and gone.
+
+### Monday 6th January
+06/01/25 03:50pm
+- Nice QOL changes to the GUI including
+  - Custom error pages can be created. The custom part is just a string error message, and a redirect link.
+  - If single_target and targets_file are both populated in the config, the user is now told to only use one.
+  - The current working directory is displayed on the homepage, and there is a toggleable button to show/hide the relevant files in that directory. 
+  - The custom error page has been implemented when the user tries to add extra commands, when the extra_commands_file setting in the config isn't populated.
+  - 
