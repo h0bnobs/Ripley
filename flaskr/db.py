@@ -13,21 +13,14 @@ from flask import current_app, g, Flask
 
 def get_db() -> sqlite3.Connection:
     """
-    Retrieves the SQLite database connection for the current Flask application context.
-
-    If no connection exists in the context, a new connection is created using the
-    application's configured 'DATABASE' path. The database rows are returned as dictionary-like
-    objects to allow column access by name.
-
-
-    :returns: sqlite3.Connection: The database connection object for the current context.
+    Returns the SQLite database connection for the current Flask application context.
+    :return: The SQLite database connection for the current Flask application context.
     """
-    if 'db' not in g:
-        g.db = sqlite3.connect(
-            current_app.config['DATABASE'],
-            detect_types=sqlite3.PARSE_DECLTYPES
-        )
-        g.db.row_factory = sqlite3.Row
+    g.db = sqlite3.connect(
+        current_app.config['DATABASE'],
+        detect_types=sqlite3.PARSE_DECLTYPES
+    )
+    g.db.row_factory = sqlite3.Row
 
     return g.db
 

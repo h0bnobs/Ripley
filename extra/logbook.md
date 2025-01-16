@@ -114,4 +114,17 @@
   - If single_target and targets_file are both populated in the config, the user is now told to only use one.
   - The current working directory is displayed on the homepage, and there is a toggleable button to show/hide the relevant files in that directory. 
   - The custom error page has been implemented when the user tries to add extra commands, when the extra_commands_file setting in the config isn't populated.
-  - 
+
+### Thursday 16th January
+16/01/25 12:40pm
+- Issues and todos ticked off including:
+  - The config is no longer hardcoded in init.py. It is now fully dynamic with a new table in the db.
+  - Robots.txt is no longer scanned twice on a single target.
+  - Extra commands feature has been cleaned up with proper errors and checks.
+- The user can now fully edit commands in the extra commands feature.
+- The config feature (like mentioned before) is now more robust and no longer hardcoded. When a user doesn't have an active config, they are prompted to select one.
+- Started experimenting with colours for the GUI.
+- The user can sort previous scans by target and or date.
+- Fixed the logic in the get_db method.
+- Added more robust checks for the extra_commands code in `run_tool_for_gui`, along with the chatgpt api call.
+- Reworked `is_target_webpage` in `ripley_cli`

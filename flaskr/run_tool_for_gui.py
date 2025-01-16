@@ -6,6 +6,7 @@ import os
 import tempfile
 import time
 from typing import List, Dict
+import openai
 from termcolor import colored
 from flaskr import get_db
 from ripley_cli import run_host, run_nmap, run_smbclient, run_ftp, get_screenshot, \
@@ -202,16 +203,24 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
         with open(extra_commands_filename, 'r') as f:
             extra_commands = [command.strip().replace('{target}', target) for command in f.readlines()]
 
-    if extra_commands:
+    if extra_commands and config['extra_commands_file'] != '':
         command_output = []
         for command in extra_commands:
             command = f'{command.strip()}'
             print(f'{COLOURS["warn"]} Running extra command: {command}!{COLOURS["end"]}')
-            command_output.append(remove_ansi_escape_codes(run_command_with_output_after(command).stdout))
+            out = run_command_with_output_after(command)
+            if out.returncode != 0:
+                command_output.append(f"Command {command} failed to complete: \n\n{remove_ansi_escape_codes(out.stderr)}")
+            else:
+                command_output.append(remove_ansi_escape_codes(out.stdout))
 
         result["extra_commands_output"] = command_output
-        ai_advice = make_chatgpt_api_call(result)
-        result["ai_advice"] = ai_advice
+        try:
+            ai_advice = make_chatgpt_api_call(result)
+            result["ai_advice"] = ai_advice
+        except openai.BadRequestError as e:
+            print(f"{COLOURS['cross']} OpenAI API call failed! {COLOURS['end']}")
+            result["ai_advice"] = "OpenAI API call failed!"
         filepath = save_scan_results_to_tempfile(result)
         #print(ai_advice)
         db = get_db()
@@ -242,6 +251,8 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
             )
         db.commit()
     else:
+        if config['extra_commands_file'] != '':
+            result["extra_commands_output"] = [f"No extra commands found in the file {extra_commands_filename}!"]
         ai_advice = make_chatgpt_api_call(result)
         result["ai_advice"] = ai_advice
         filepath = save_scan_results_to_tempfile(result)

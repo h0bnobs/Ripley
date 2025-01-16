@@ -8,7 +8,7 @@ import re
 import os
 import xml.etree.ElementTree as ET
 
-from scripts.run_commands import run_command_with_output_after
+from scripts.run_commands import run_command_with_output_after, run_command_no_output
 
 COLOURS = {
     "plus": "\033[1;34m[\033[1;m\033[1;32m+\033[1;m\033[1;34m]",
@@ -90,15 +90,8 @@ def robots_string() -> str:
     The robots.txt string.
     :return: The robots.txt string.
     """
-    return """
-__________.__       .__          
-\______   \__|_____ |  |   ____ ___.__.
- |       _/  \____ \|  | _/ __ <   |  |
- |    |   \  |  |_> >  |_\  ___/\___  |
- |____|_  /__|   __/|____/\___  > ____|
-        \/   |__|             \/\/     
-
-
+    return f"""
+{gui_banner()}
 User-agent: *
 Disallow: /
 
@@ -217,7 +210,7 @@ def is_wordpress_site(target: str) -> bool:
     ]
     for url in attempts:
         try:
-            robots_file = run_command_with_output_after(f'curl {url}')
+            robots_file = run_command_no_output(f'curl {url}')
             if robots_file.returncode == 0:
                 break
         except Exception as e:

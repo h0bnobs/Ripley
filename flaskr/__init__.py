@@ -22,12 +22,9 @@ from ripley_cli import get_target_list
 from flaskr.run_tool_for_gui import run_on_multiple_targets, run_on_single_target
 from scripts.utils import parse_config_file, robots_string
 
+
 # flask --app flaskr init-db
 # flask --app flaskr run --debug
-
-# todo this is hardcoded
-config = parse_config_file("config.json")
-
 
 def create_app(test_config=None) -> Flask:
     """
@@ -44,8 +41,18 @@ def create_app(test_config=None) -> Flask:
     :rtype: Flask
     """
 
+
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
+
+    # ensure the instance folder exists
+    try:
+        os.makedirs(app.instance_path)
+    except OSError:
+        pass
+
+    # sets configuration values for the Flask application. In this case, it sets SECRET_KEY and DATABASE.
+    # DATABASE is set to the path of the SQLite database file, which is located in the instance folder of the Flask application.
     app.config.from_mapping(
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
@@ -58,11 +65,6 @@ def create_app(test_config=None) -> Flask:
         # load the test config if passed in
         app.config.from_mapping(test_config)
 
-    # ensure the instance folder exists
-    try:
-        os.makedirs(app.instance_path)
-    except OSError:
-        pass
 
     @app.route('/')
     def index() -> str:
@@ -73,7 +75,8 @@ def create_app(test_config=None) -> Flask:
         db = get_db()
         config_entries = db.execute("SELECT * FROM config").fetchall()
         config = [dict(entry) for entry in config_entries]
-        targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0]['targets_file'] else None
+        targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0][
+            'targets_file'] else None
 
         duplicate_targets = False
         if config[0]['single_target'] != '' and config[0]['targets_file'] != '':
@@ -83,10 +86,14 @@ def create_app(test_config=None) -> Flask:
         extra_commands = None
 
         if extra_commands_filename:
-            with open(extra_commands_filename) as f:
-                extra_commands = f.readlines()
-
-        #gets the relevant files in the current working directory
+            # this try except block is to handle the case where the extra commands file is not found, eg if there is a typo.
+            # it makes it so the user isn't put into an infinite loop of errors.
+            try:
+                with open(extra_commands_filename) as f:
+                    extra_commands = f.readlines()
+            except FileNotFoundError:
+                extra_commands = None
+        # gets the relevant files in the current working directory
         files_in_dir = sorted(
             [file for file in os.listdir(os.getcwd()) if
              (file.endswith('.json') or file.endswith('.txt') or file.endswith('.py')) and file != 'requirements.txt'],
@@ -94,9 +101,13 @@ def create_app(test_config=None) -> Flask:
         )
 
         if targets is None:
-            return render_template('index.html', duplicate_targets=duplicate_targets, results=config, current_directory=os.getcwd(), files_in_directory=files_in_dir, extra_commands=extra_commands)
+            return render_template('index.html', duplicate_targets=duplicate_targets, results=config,
+                                   current_directory=os.getcwd(), files_in_directory=files_in_dir,
+                                   extra_commands=extra_commands)
         else:
-            return render_template('index.html', duplicate_targets=duplicate_targets, results=config, targets=targets, current_directory=os.getcwd(), files_in_directory=files_in_dir, extra_commands=extra_commands)
+            return render_template('index.html', duplicate_targets=duplicate_targets, results=config, targets=targets,
+                                   current_directory=os.getcwd(), files_in_directory=files_in_dir,
+                                   extra_commands=extra_commands)
 
     @app.route('/upload-file', methods=['POST'])
     def check_file():
@@ -117,14 +128,21 @@ def create_app(test_config=None) -> Flask:
 
             db = get_db()
             db.execute(
-                "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?",
+                "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?, extra_commands_file = ?",
                 (new_config.get('single_target', ''),
                  new_config.get('multiple_targets', ''),
                  new_config.get('targets_file', ''),
                  new_config.get('nmap_parameters', ''),
                  new_config.get('config_filepath', ''),
-                 new_config.get('ffuf_delay', ''))
+                 new_config.get('ffuf_delay', ''),
+                 new_config.get('extra_commands_file', ''))
             )
+            db.commit()
+
+            # then we update the current_config table, assuming that the config file is in the project root.
+            t = new_config.get('config_filepath').split('/')
+            db.execute("UPDATE current_config SET full_path = ?, filename = ?",
+                       (new_config.get('config_filepath'), t[len(t) - 1]))
             db.commit()
 
             with open(new_config.get('config_filepath'), 'w') as file:
@@ -135,15 +153,34 @@ def create_app(test_config=None) -> Flask:
             targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0][
                 'targets_file'] else None
 
+            duplicate_targets = False
+            if config[0]['single_target'] != '' and config[0]['targets_file'] != '':
+                duplicate_targets = True
+
             extra_commands_filename = config[0].get('extra_commands_file')
+            extra_commands = None
+
             if extra_commands_filename:
-                with open(extra_commands_filename, 'r') as f:
+                with open(extra_commands_filename) as f:
                     extra_commands = f.readlines()
 
+            # gets the relevant files in the current working directory
+            files_in_dir = sorted(
+                [file for file in os.listdir(os.getcwd()) if
+                 (file.endswith('.json') or file.endswith('.txt') or file.endswith(
+                     '.py')) and file != 'requirements.txt'],
+                key=lambda x: (not x.endswith('.json'), not x.endswith('.txt'), not x.endswith('.py'))
+            )
+
             if targets is None:
-                return render_template('index.html', results=config, extra_commands=extra_commands)
+                return render_template('index.html', duplicate_targets=duplicate_targets, results=config,
+                                       current_directory=os.getcwd(), files_in_directory=files_in_dir,
+                                       extra_commands=extra_commands)
             else:
-                return render_template('index.html', results=config, targets=targets, extra_commands=extra_commands)
+                return render_template('index.html', duplicate_targets=duplicate_targets, results=config,
+                                       targets=targets, current_directory=os.getcwd(), files_in_directory=files_in_dir,
+                                       extra_commands=extra_commands)
+
         else:
             return "Something went wrong. Please upload a JSON file."
 
@@ -196,7 +233,8 @@ def create_app(test_config=None) -> Flask:
         # we need to change the screenshot from 'output/{target}' to the location of the ss inside the flaskr directory.
         # if the screenshot isn't there then its fine, it'll just display a message.
         result['screenshot'] = f'static/screenshots/{result["target"]}.png'
-        result["extra_commands_output"] = [row['command_output'] for row in db.execute(f"SELECT command_output FROM extra_commands WHERE scan_num = {result['scan_num']}").fetchall()]
+        result["extra_commands_output"] = [row['command_output'] for row in db.execute(
+            f"SELECT command_output FROM extra_commands WHERE scan_num = {result['scan_num']}").fetchall()]
         return render_template('previous_scan_single_target.html', result=result)
 
     @app.route('/add-commands', methods=['POST', 'GET'])
@@ -216,18 +254,46 @@ def create_app(test_config=None) -> Flask:
             command = form_data.get('command').strip()
             with open(extra_commands_filename, 'a') as f:
                 f.write(f'{command}\n')
-                #print(command, file=f)
+                # print(command, file=f)
             with open(extra_commands_filename, 'r') as f:
                 extra_commands = f.readlines()
             return render_template('add_commands.html', config=config, extra_commands=extra_commands)
 
-        #if GET, render the page with config and any commands that have already been added
+        # if GET, render the page with config and any commands that have already been added
         try:
             with open(extra_commands_filename, 'r') as f:
                 extra_commands = f.readlines()
                 return render_template('add_commands.html', config=config, extra_commands=extra_commands)
         except FileNotFoundError:
-            return error(f"No extra commands file found in {config[0]['config_filepath']}. Please review your config and try again!", url_for('index'))
+            return error(
+                f"No extra commands file found in {config[0]['config_filepath']}. Please review your config and try again!",
+                url_for('index'))
+
+    @app.route('/edit-command', methods=['POST'])
+    def edit_command():
+        """
+        This is for the button on the add commands page that says "Edit" for each command.
+        :return: The render template of the edit command html file with the command to be edited.
+        """
+        original_command = request.form['original_command'].strip()
+        edited_command = request.form['edited_command']
+        line_number = int(request.form['line_number'])
+
+        db = get_db()
+        config = db.execute("SELECT * FROM config").fetchall()
+        config = [dict(entry) for entry in config]
+
+        with open(config[0]['extra_commands_file'], 'r') as f:
+            current_commands = f.read().splitlines()
+
+        if 0 <= line_number < len(current_commands) and current_commands[line_number] == original_command:
+            current_commands[line_number] = edited_command
+
+        with open(config[0]['extra_commands_file'], 'w') as f:
+            for c in current_commands:
+                f.write(f'{c}\n')
+
+        return redirect(url_for('view_add_commands'))
 
     @app.route('/update-config', methods=['POST'])
     def update_config() -> Response:
@@ -238,6 +304,8 @@ def create_app(test_config=None) -> Flask:
         :return: The homepage again with the updated config.
         """
         new_config = json.loads(request.form['config'])
+
+        # first update the config table
         db = get_db()
         db.execute(
             "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?, extra_commands_file = ?",
@@ -249,6 +317,12 @@ def create_app(test_config=None) -> Flask:
              new_config['ffuf_delay'],
              new_config['extra_commands_file'])
         )
+        db.commit()
+
+        # then we update the current_config table, assuming that the config file is in the project root.
+        t = new_config['config_filepath'].split('/')
+        db.execute("UPDATE current_config SET full_path = ?, filename = ?",
+                   (new_config['config_filepath'], t[len(t) - 1]))
         db.commit()
 
         # now we update config.json in the directory root
@@ -343,7 +417,7 @@ def create_app(test_config=None) -> Flask:
             raise Exception("Target list empty!")
 
     @app.route('/remove-extra-command', methods=['POST'])
-    def remove_extra_command():
+    def remove_extra_command() -> str:
         """
         This is for the button on the add commands page that says "Remove" for each command.
         :return: The render template of the add commands html file with the command removed.
@@ -364,7 +438,7 @@ def create_app(test_config=None) -> Flask:
     def internal_error(error):
         return render_template('error.html', error_message="Internal server error!", redirect=url_for('index')), 500
 
-    def error(error_msg: str, full_redirect: str):
+    def error(error_msg: str, full_redirect: str) -> str:
         """
         This is for the error page.
         :param error_msg: The error message to display.
@@ -373,23 +447,72 @@ def create_app(test_config=None) -> Flask:
         """
         return render_template('error.html', error_message=error_msg, redirect=full_redirect)
 
-    from . import db
-    db.init_app(app)
+    @app.route('/select-config')
+    def select_config() -> str:
+        """
+        The route for selecting a config file if no current config is found.
+        :return: The render template of the select config html file.
+        """
+        files_in_dir = sorted(
+            [os.path.join(os.getcwd(), file) for file in os.listdir(os.getcwd()) if file.endswith('.json')],
+            key=lambda x: (not x.endswith('.json'))
+        )
+        return render_template('select_config.html', files_in_directory=files_in_dir)
+
+    @app.route('/set-config', methods=['POST'])
+    def set_config() -> Response:
+        """
+        This route sets the selected config file as the current config.
+        :return: The redirect to the index page.
+        """
+        selected_config = request.form['config_file']
+        filename = os.path.basename(selected_config)
+        db = get_db()
+        db.execute("INSERT INTO current_config (full_path, filename) VALUES (?, ?)", (selected_config, filename))
+        db.commit()
+        config = parse_config_file(selected_config)
+        load_config_into_db(config, selected_config)
+        app.config['NO_CONFIG_FOUND'] = False
+        return redirect(url_for('index'))
+
+    @app.before_request
+    def check_for_config():
+        """
+        This function checks if the current config is set. If not, it redirects to the select config page.
+        :return: The redirect to the select config page.
+        """
+        if request.endpoint not in ['select_config', 'set_config'] and app.config.get('NO_CONFIG_FOUND'):
+            return redirect(url_for('select_config'))
+
     with app.app_context():
         init_db()
-        load_config_into_db(config)
+        config_path = get_current_config_as_full_path()
+        if not config_path:
+            app.config['NO_CONFIG_FOUND'] = True
+        else:
+            config = parse_config_file(config_path)
+            load_config_into_db(config, config_path)
+
     return app
 
-def load_config_into_db(config: dict) -> None:
-    """
-    Gets the config from the root directory and puts it into the config table in the db.
-    """
-    config_filepath = ""
-    for file in os.listdir():
-        if file.endswith(".json") and file.startswith("config"):
-            config_filepath = file
-            break
 
+def get_current_config_as_full_path() -> str:
+    """
+    Gets the current config file path from the database.
+    :return: The full path of the current config file or None if not found.
+    """
+    db = get_db()
+    row = db.execute("SELECT full_path FROM current_config").fetchone()
+    return row['full_path'] if row else None
+
+
+def load_config_into_db(config: dict, config_filepath: str) -> None:
+    """
+    Uses the config dictionary to load the config into the database.
+    :param config: The config dictionary.
+    :param config_filepath: The full path of the config file.
+    :return: None
+    """
     db = get_db()
     if config:
         db.execute(

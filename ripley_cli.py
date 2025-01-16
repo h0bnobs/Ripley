@@ -270,13 +270,12 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> None
 
 def is_target_webpage(target: str) -> bool:
     """
-    Checks if the target is a webpage.
-    :param nmap_flags: The flags that the user has defined in the config to run their nmap.
+    Basic check to see if the target is a webpage based solely whether one of the ports 80, 443, 8080 or 8443 are open.
     :param target: The target to check.
-    :return: True if the target is a webpage, False otherwise.
+    :return: True if the target has one of the mentioned ports open, False otherwise.
     """
     open_ports = parse_nmap_xml(f'flaskr/static/temp/nmap-{target}.xml', [80, 443, 8080, 8443])
-    run_command_no_output(f'rm nmap-{target}.xml')
+    run_command_no_output(f'rm flaskr/static/temp/nmap-{target}.xml')
     if '80' in open_ports or '443' in open_ports or '8080' in open_ports or '8443' in open_ports:
         return True
     return False

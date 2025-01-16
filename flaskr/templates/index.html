@@ -5,11 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configuration</title>
     <style>
+        input[type='file'], #files-list, h2, h3, h4, p {
+            color: white;
+            font-family: "Aeonik Pro", sans-serif;
+        }
+
+        body {
+            background-color: #00005B;
+        }
+
+        #commands-display, li {
+            color: #FFA400;
+            font-weight: bolder;
+            font-family: "Aeonik Pro", sans-serif;
+        }
+
         /* textarea style feel like a text editor */
         textarea {
             width: 30%;
-            height: 150px;
-            font-family: monospace;
+            height: 180px;
+            font-family: "Aeonik Pro", sans-serif;
             font-size: 14px;
             padding: 10px;
             border: 1px solid #ccc;
@@ -27,22 +42,17 @@
             top: 5.5%;
         }
 
-        /*.file-upload {*/
-        /*    margin-top: 10px;*/
-        /*}*/
     </style>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../static/js/index.js"></script>
+
 </head>
+
 <body>
 <h2>View and edit current config that the tool will use:</h2>
 
-<form action="/upload-file" method="POST" enctype="multipart/form-data">
-    <input type="file" name="file" class="file-upload" accept=".json">
-    <button type="submit">Upload File</button>
-</form><br>
-
-<!-- allows users to edit the config as JSON -->
+<!-- textarea -->
 <form action="/update-config" method="POST">
              <textarea id="config" name="config">{
 {% for entry in results %}   "single_target": "{{ entry['single_target'] }}",
@@ -55,9 +65,19 @@
 }
 {% if not loop.last %},{% endif %}{% endfor %}</textarea>
     <br>
+    <!-- update config button -->
     <button class="btn_margin" type="submit">Update Config</button>
 </form>
-<!-- "run ripley" Button -->
+<br>
+
+<!-- upload config file buttons -->
+<form action="/upload-file" method="POST" enctype="multipart/form-data">
+    <input type="file" title="Upload config" name="file" class="file-upload" accept=".json" onchange="this.nextElementSibling.innerText = this.files.length ? this.files[0].name : '';">
+    <button type="submit">Upload File</button>
+</form>
+
+
+<!-- run button -->
 <form action="/running" method="POST">
     <input type="hidden" name="running" value='{
     {% for entry in results %}
@@ -77,8 +97,8 @@
     {% endif %}
 </form>
 
-{% if targets %}
 <!-- displays targets from the file -->
+{% if targets %}
 <div class="targets">
     <h3>First few targets from {{ results[0]['targets_file'] }}:</h3>
     <span id="targets-filepath" style="display: none;">{{ results[0]['targets_file'] }}</span>
@@ -91,14 +111,20 @@
 
 </div>
 {% endif %}
+
+<!-- goto previous scans page -->
 <form action="/previous-scans" method="GET">
     <button class="btn_margin" type="submit">View last scans</button>
 </form>
+
+<!-- goto add/edit commands page -->
 <form action="/add-commands" method="GET">
     <button class="btn_margin" type="submit">Add/Edit commands</button>
 </form>
+
+<!-- displays extra commands -->
 {% if extra_commands %}
-    <h4>Extra command(s) to be run:</h4>
+    <h4 style="text-decoration: underline">Extra command(s) to be run:</h4>
     <p id="commands-display"></p>
     <script>
         $(document).ready(function() {
@@ -109,9 +135,8 @@
     </script>
 {% endif %}
 
+<!-- toggle file list visibility -->
 <h3>Currently working in {{ current_directory }}</h3>
-
-<!-- Button to toggle file list visibility -->
 <button id="toggle-files-btn" class="btn_margin">Toggle Relevant Files in Working Directory</button>
 <div id="files-list" style="display: none;">
     <h4>Relevant files in the current directory:</h4>

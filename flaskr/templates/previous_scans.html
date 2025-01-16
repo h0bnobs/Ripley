@@ -21,6 +21,20 @@
 <body>
 <h2>Previous Scans</h2>
 <button onclick="window.location.href='/'">Back</button><br><br>
+
+<!-- Filter dropdown -->
+<label for="filter">Filter by date:</label>
+<select id="filter" onchange="filterResults()">
+    <option value="all">All</option>
+    <option value="today">Today</option>
+    <option value="last7days">Last 7 Days</option>
+    <option value="last30days">Last 30 Days</option>
+</select><br><br>
+
+<!-- Filter by target -->
+<label for="targetFilter">Filter by target:</label>
+<input type="text" id="targetFilter" oninput="filterResults()"><br><br>
+
 <table border="1" id="scansTable">
     <thead>
     <tr>
@@ -68,6 +82,37 @@
 
         const sortButton = document.getElementById('sortButton');
         sortButton.textContent = isAscending ? 'Sort' : 'Sort';
+    }
+
+    function filterResults() {
+        const filter = document.getElementById('filter').value;
+        const targetFilter = document.getElementById('targetFilter').value.toLowerCase();
+        const rows = document.querySelectorAll('#scansTable tbody tr');
+        const now = new Date();
+
+        rows.forEach(row => {
+            const scanDate = new Date(row.cells[1].textContent);
+            const target = row.cells[0].textContent.toLowerCase();
+            let showRow = true;
+
+            if (filter === 'today') {
+                showRow = scanDate.toDateString() === now.toDateString();
+            } else if (filter === 'last7days') {
+                const sevenDaysAgo = new Date(now);
+                sevenDaysAgo.setDate(now.getDate() - 7);
+                showRow = scanDate >= sevenDaysAgo && scanDate <= now;
+            } else if (filter === 'last30days') {
+                const thirtyDaysAgo = new Date(now);
+                thirtyDaysAgo.setDate(now.getDate() - 30);
+                showRow = scanDate >= thirtyDaysAgo && scanDate <= now;
+            }
+
+            if (targetFilter && !target.includes(targetFilter)) {
+                showRow = false;
+            }
+
+            row.style.display = showRow ? '' : 'none';
+        });
     }
 
     document.addEventListener('DOMContentLoaded', () => {

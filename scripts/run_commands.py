@@ -61,15 +61,16 @@ def run_command_live_output(command: str) -> str:
 
         if process.returncode != 0:
             stderr_output = process.stderr.read()  # Capture stderr
-            raise subprocess.CalledProcessError(process.returncode, command, stderr_output)
+            stdout_output.append(f"\nCommand {command} failed with error:\n{stderr_output}")
+            return ''.join(stdout_output)
 
         # Join stdout and return as a string
         return ''.join(stdout_output)
 
     except subprocess.CalledProcessError as e:
-        # Raise an error with the stderr output
-        error_msg = f"Command {command} failed with error:\n{e.stderr}"
-        raise RuntimeError(error_msg)
+        # Append the stderr output to the captured stdout
+        stdout_output.append(f"\nCommand {command} failed with error:\n{e.stderr}")
+        return ''.join(stdout_output)
 
 
 def run_command_live_output_with_input(command, input_data, delay=0.5) -> subprocess.Popen[str | bytes]:
