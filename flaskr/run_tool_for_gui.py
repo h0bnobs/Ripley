@@ -12,26 +12,14 @@ from flaskr import get_db
 from ripley_cli import run_host, run_nmap, run_smbclient, run_ftp, get_screenshot, \
     get_robots_file, run_dns_recon, run_ffuf_subdomain, is_target_webpage, run_ffuf_webpage, run_wpscan
 from scripts.chatgpt_call import make_chatgpt_api_call
-from scripts.run_commands import run_command_no_output, run_command_with_output_after
+from scripts.run_commands import run_command_no_output, run_command_with_output_after, run_command_live_output
 from scripts.utils import remove_ansi_escape_codes, gui_banner, COLOURS, remove_leading_newline, is_wordpress_site
 import concurrent.futures
 from flask import current_app
 
 
 def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> List[str]:
-    """
-    Runs the tool for multiple targets given as a list.
-    :param target_list: The list of targets to run.
-    :param config: The configuration file as a dictionary.
-    :return: A list of paths to the temp files generated.
-    """
     def process_target(app, target: str) -> str:
-        """
-        Processes a single target.
-        :param app: The flask app.
-        :param target: The target to process.
-        :return: The path to the temp file as a string.
-        """
         with app.app_context():
             nmap_flags = config['nmap_parameters']
             tasks = []
@@ -40,10 +28,10 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
             if is_webpage:
                 print(f'{COLOURS["warn"]} Starting website tasks concurrently. {COLOURS["end"]}')
                 with concurrent.futures.ThreadPoolExecutor() as ffuf_executor:
-                    tasks.append(ffuf_executor.submit(run_ffuf_webpage, target, config["ffuf_delay"]))
+                    tasks.append(ffuf_executor.submit(run_ffuf_webpage, target, config["ffuf_webpage_wordlist"], config["ffuf_delay"]))
                     tasks.append(ffuf_executor.submit(get_robots_file, target))
                     subdomain_target = target[4:] if target.startswith('www.') else target
-                    tasks.append(ffuf_executor.submit(run_ffuf_subdomain, subdomain_target, config["ffuf_delay"]))
+                    tasks.append(ffuf_executor.submit(run_ffuf_subdomain, subdomain_target, config["ffuf_subdomain_wordlist"], config["ffuf_delay"]))
                     if is_wordpress_site(target):
                         tasks.append(ffuf_executor.submit(run_wpscan, target))
 
@@ -94,7 +82,7 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
                 with open(extra_commands_filename, 'r') as f:
                     extra_commands = [command.strip().replace('{target}', target) for command in f.readlines()]
 
-            if extra_commands:
+            if 'extra_commands' in locals() and extra_commands:
                 command_output = []
                 for command in extra_commands:
                     command = f'{command.strip()}'
@@ -103,7 +91,10 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
 
                 result["extra_commands_output"] = command_output
 
-            ai_advice = make_chatgpt_api_call(result)
+            if config['disable_chatgpt_api'].lower() == 'false':
+                ai_advice = make_chatgpt_api_call(result)
+            else:
+                ai_advice = "ChatGPT is either disabled or there is an issue with the config!"
             result["ai_advice"] = ai_advice
             temp_file_path = save_scan_results_to_tempfile(result)
             print(ai_advice)
@@ -127,12 +118,13 @@ def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> L
 
             scan_num = db.execute("SELECT MAX(scan_num) FROM scan_results").fetchone()[0]
 
-            for command in extra_commands:
-                db.execute(
-                    "INSERT INTO extra_commands (scan_num, command, command_output) VALUES (?, ?, ?)",
-                    (scan_num, command.strip(), command_output.pop(0))
-                )
-            db.commit()
+            if 'extra_commands' in locals() and extra_commands:
+                for command in extra_commands:
+                    db.execute(
+                        "INSERT INTO extra_commands (scan_num, command, command_output) VALUES (?, ?, ?)",
+                        (scan_num, command.strip(), command_output.pop(0))
+                    )
+                db.commit()
             return temp_file_path
 
     file_paths = []
@@ -164,13 +156,13 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
             wpscan_output = remove_ansi_escape_codes(run_wpscan(target))
         else:
             wpscan_output = "Not a WordPress site!"
-        ffuf_webpage_output = run_ffuf_webpage(target, config["ffuf_delay"])
+        ffuf_webpage_output = run_ffuf_webpage(target, config["ffuf_webpage_wordlist"], config["ffuf_delay"])
         robots_output = get_robots_file(target).stdout
         if target.startswith('www.'):
             ffuf_temp_target = target[4:]
-            ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target, config["ffuf_delay"])
+            ffuf_subdomain_output = run_ffuf_subdomain(ffuf_temp_target, config["ffuf_subdomain_wordlist"], config["ffuf_delay"])
         else:
-            ffuf_subdomain_output = run_ffuf_subdomain(target, config["ffuf_delay"])
+            ffuf_subdomain_output = run_ffuf_subdomain(target, config["ffuf_subdomain_wordlist"], config["ffuf_delay"])
         screenshot_filepath = get_screenshot(target)
         if screenshot_filepath:
             os.makedirs('flaskr/static/screenshots', exist_ok=True)
@@ -203,7 +195,7 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
         with open(extra_commands_filename, 'r') as f:
             extra_commands = [command.strip().replace('{target}', target) for command in f.readlines()]
 
-    if extra_commands and config['extra_commands_file'] != '':
+    if 'extra_commands' in locals() and extra_commands and config['extra_commands_file'] != '': #if there is a file with extra commands and there are commands in that file.
         command_output = []
         for command in extra_commands:
             command = f'{command.strip()}'
@@ -216,7 +208,10 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
 
         result["extra_commands_output"] = command_output
         try:
-            ai_advice = make_chatgpt_api_call(result)
+            if config['disable_chatgpt_api'].lower() == 'false': #if chatgpt is enabled
+                ai_advice = make_chatgpt_api_call(result)
+            else:
+                ai_advice = "ChatGPT is either disabled or there is an issue with the config!"
             result["ai_advice"] = ai_advice
         except openai.BadRequestError as e:
             print(f"{COLOURS['cross']} OpenAI API call failed! {COLOURS['end']}")
@@ -250,10 +245,13 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
                 (scan_num, command.strip(), command_output.pop(0))
             )
         db.commit()
-    else:
-        if config['extra_commands_file'] != '':
+    else: #if there are no extra commands
+        if config['extra_commands_file'] != '': #the case where config["extra_commands_file"] is not empty but there are no commands in that file.
             result["extra_commands_output"] = [f"No extra commands found in the file {extra_commands_filename}!"]
-        ai_advice = make_chatgpt_api_call(result)
+        if config['disable_chatgpt_api'].lower() == 'false': #if chatgpt is enabled
+            ai_advice = make_chatgpt_api_call(result)
+        else:
+            ai_advice = "ChatGPT is either disabled or there is an issue with the config!"
         result["ai_advice"] = ai_advice
         filepath = save_scan_results_to_tempfile(result)
         print(ai_advice)

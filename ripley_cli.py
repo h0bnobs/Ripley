@@ -324,42 +324,82 @@ def run_ftp(target: str) -> bool:
         return False
 
 
-def run_ffuf_subdomain(target: str, delay=0) -> str:
+def run_ffuf_subdomain(target: str, wordlist_filepath: str, delay=0) -> str:
     """
     Runs ffuf to find subdomains. WARNING: remember to remove 'www.' from the target before running this function.
+    :param wordlist_filepath: The path to the wordlist file.
     :param delay: An optional delay to add between requests.
     :param target: The target to run ffuf on.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
-    # todo: get the wordlist! Also look for a smaller one.
-    # /usr/share/wordlists/n0kovo_subdomains_tiny.txt
     print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
+    # https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt
+    # command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt -p {delay}'
+    if not wordlist_filepath:
+        # check if wordlist exists already in proj root
+        for file in os.listdir():
+            if file == 'dnspod-top2000-sub-domains.txt':
+                wordlist_filepath = 'dnspod-top2000-sub-domains.txt'
+                break
+        else:
+            # get suitable wordlist from git if not found
+            url = 'https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt'
+            t = run_command_with_output_after(f'curl -o dnspod-top2000-sub-domains.txt {url}')
+            if t.returncode == 0:
+                wordlist_filepath = 'dnspod-top2000-sub-domains.txt'
+
     if delay != 0:
-        command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt -p {delay}'
+        command = (
+            f'ffuf -w {wordlist_filepath} '
+            f'-u https://FUZZ.{target} '
+            f'-H "Host: FUZZ.{target}" '
+            f'-o output/ffuf_subdomain_enumeration_{target}.txt '
+            f'-p {delay}'
+        )
     else:
-        command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt'
+        command = (
+            f'ffuf -w {wordlist_filepath} '
+            f'-u https://FUZZ.{target} '
+            f'-H "Host: FUZZ.{target}" '
+            f'-o output/ffuf_subdomain_enumeration_{target}.txt'
+        )
+    print(f"using {wordlist_filepath}")
     result = run_command_live_output(command)
-    print(f'{COLOURS["warn"]} End of subdomains! {COLOURS["end"]}')
-    # print(result)
-    return result
+    print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
+    return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
 
-
-def run_ffuf_webpage(target: str, delay=0) -> str:
+def run_ffuf_webpage(target: str, wordlist_filepath: str, delay = 0) -> str:
     """
     Runs ffuf to find webpages.
+    :param wordlist_filepath: The path to the wordlist file.
     :param delay: An optional delay to add between requests.
     :param target: The target to run ffuf on.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
     print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
+
+    if not wordlist_filepath:
+        # check if wordlist exists already in proj root
+        for file in os.listdir():
+            if file == 'Directories_Common.wordlist':
+                wordlist_filepath = 'Directories_Common.wordlist'
+                break
+        else:
+            # get suitable wordlist from git if not found
+            url = 'https://raw.githubusercontent.com/emadshanab/WordLists-20111129/master/Directories_Common.wordlist'
+            t = run_command_with_output_after(f'curl -o Directories_Common.wordlist {url}')
+            if t.returncode == 0:
+                wordlist_filepath = 'Directories_Common.wordlist'
+
     if delay != 0:
-        command = f'ffuf -w test_dictionary.txt -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500 -p {delay}'
+        command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500 -p {delay}'
     else:
-        command = f'ffuf -w test_dictionary.txt -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500'
+        command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500'
+
+    print(f"using {wordlist_filepath}")
     result = run_command_live_output(command)
     print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
-    return result
-
+    return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
 
 def get_ipv4_addresses(domain: str) -> List[str]:
     """
@@ -502,6 +542,7 @@ def get_screenshot(target: str) -> str:
         try:
             chromedriver = webdriver.Chrome()
             chromedriver.set_window_size(1500, 1080)
+            chromedriver.set_page_load_timeout(10)
             chromedriver.get(url)
             time.sleep(1)
             screenshot_path = f'output/{target}.png'

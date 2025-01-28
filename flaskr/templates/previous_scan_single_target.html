@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Previous scan on a single target</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <link rel="stylesheet" href="../static/style/style.css">
+    <script src="../static/js/single_target_result.js"></script>
+    <link rel="stylesheet" href="../static/style/results_style.css">
 </head>
 <body>
-<h1>Scan Results From {{ result['scan_start_time'] }}</h1>
+<h1 style="color: #FFA400">Scan Results From {{ result['scan_start_time'] }}</h1>
 <button onclick="window.location.href='/previous-scans'">Back</button>
 <!-- Outer collapsible for the entire target -->
 <div class="collapsible outer-collapsible">{{ result['target'] }}</div>
@@ -72,9 +72,6 @@
 
     </div>
 </div>
-
-<script src="../static/js/single_target_result.js"></script>
-
 
 </body>
 </html>

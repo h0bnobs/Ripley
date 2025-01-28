@@ -1,0 +1,60 @@
+#config {
+    width: 31%;
+    height: 175px;
+    font-family: "Aeonik Pro", sans-serif;
+    font-size: 14px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f4f4f4;
+}
+
+#targets {
+    width: 31%;
+    height: 100px;
+    font-family: "Aeonik Pro", sans-serif;
+    font-size: 14px;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f4f4f4;
+}
+
+input[type='file'], #files-list, h2, h3, h4, p {
+    color: white;
+    font-family: "Aeonik Pro", sans-serif;
+}
+
+body {
+    background-color: #00005B;
+}
+
+table {
+    border-collapse: collapse;
+    border-color: #FFA400;
+}
+
+th, td {
+    padding: 8px;
+    text-align: center;
+    border-color: #FFA400;
+    color: white;
+}
+
+label {
+    color: white;
+}
+
+.button-cell {
+    border: none;
+}
+
+#commands-display, li {
+    color: #FFA400;
+    font-weight: bolder;
+    font-family: "Aeonik Pro", sans-serif;
+}
+
+.btn_margin {
+    margin-top: 10px;
+}

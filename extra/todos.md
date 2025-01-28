@@ -23,6 +23,7 @@
 - Ffuf is only looking for https pages and subdomains.
 - Ffuf is using the hardcoded wordlists. They need adding to the config.
 - Update helper methods like is_target_webpage (in ripley_cli) and is_wordpress_site (in utils) so that they are more robust
+- Add warning to index and maybe add_commands pages, where if the extra_commands_file option is populated in config, and there are no commands in that file.
 
 ## Lower level stuff:
 - OS detection

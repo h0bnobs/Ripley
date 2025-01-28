@@ -10,15 +10,9 @@ Modules:
     flaskr.run_tool_for_gui: Contains functions to run network scanning tools on single or multiple targets.
     scripts.utils: Provides utility functions for parsing configuration files and displaying banners.
 """
-import json
-import os
-import time
-from crypt import methods
-
+import json, os, time, re, ipaddress
 from flask import Flask, render_template, request, redirect, url_for, session, Response
-
 from flaskr.db import get_db, init_db
-from ripley_cli import get_target_list
 from flaskr.run_tool_for_gui import run_on_multiple_targets, run_on_single_target
 from scripts.utils import parse_config_file, robots_string
 
@@ -40,7 +34,6 @@ def create_app(test_config=None) -> Flask:
     :return: A Flask application instance.
     :rtype: Flask
     """
-
 
     # create and configure the app
     app = Flask(__name__, instance_relative_config=True)
@@ -65,49 +58,34 @@ def create_app(test_config=None) -> Flask:
         # load the test config if passed in
         app.config.from_mapping(test_config)
 
-
     @app.route('/')
-    def index() -> str:
+    def settings() -> str:
         """
         The route for the homepage. Displays the config.
-        :return: The render of the index html file
+        :return: The render of the settings html file
         """
         db = get_db()
         config_entries = db.execute("SELECT * FROM config").fetchall()
         config = [dict(entry) for entry in config_entries]
-        targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0][
-            'targets_file'] else None
-
-        duplicate_targets = False
-        if config[0]['single_target'] != '' and config[0]['targets_file'] != '':
-            duplicate_targets = True
 
         extra_commands_filename = config[0].get('extra_commands_file')
         extra_commands = None
 
         if extra_commands_filename:
-            # this try except block is to handle the case where the extra commands file is not found, eg if there is a typo.
-            # it makes it so the user isn't put into an infinite loop of errors.
             try:
                 with open(extra_commands_filename) as f:
                     extra_commands = f.readlines()
             except FileNotFoundError:
                 extra_commands = None
-        # gets the relevant files in the current working directory
+
         files_in_dir = sorted(
             [file for file in os.listdir(os.getcwd()) if
              (file.endswith('.json') or file.endswith('.txt') or file.endswith('.py')) and file != 'requirements.txt'],
             key=lambda x: (not x.endswith('.json'), not x.endswith('.txt'), not x.endswith('.py'))
         )
 
-        if targets is None:
-            return render_template('index.html', duplicate_targets=duplicate_targets, results=config,
-                                   current_directory=os.getcwd(), files_in_directory=files_in_dir,
-                                   extra_commands=extra_commands)
-        else:
-            return render_template('index.html', duplicate_targets=duplicate_targets, results=config, targets=targets,
-                                   current_directory=os.getcwd(), files_in_directory=files_in_dir,
-                                   extra_commands=extra_commands)
+        return render_template('settings.html', results=config, current_directory=os.getcwd(),
+                               files_in_directory=files_in_dir, extra_commands=extra_commands)
 
     @app.route('/upload-file', methods=['POST'])
     def check_file():
@@ -128,21 +106,36 @@ def create_app(test_config=None) -> Flask:
 
             db = get_db()
             db.execute(
-                "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?, extra_commands_file = ?",
-                (new_config.get('single_target', ''),
-                 new_config.get('multiple_targets', ''),
-                 new_config.get('targets_file', ''),
-                 new_config.get('nmap_parameters', ''),
-                 new_config.get('config_filepath', ''),
-                 new_config.get('ffuf_delay', ''),
-                 new_config.get('extra_commands_file', ''))
+                """
+                UPDATE config SET 
+                    targets = ?,
+                    nmap_parameters = ?, 
+                    config_filepath = ?, 
+                    ffuf_delay = ?, 
+                    extra_commands_file = ?, 
+                    ffuf_subdomain_wordlist = ?, 
+                    ffuf_webpage_wordlist = ?, 
+                    disable_chatgpt_api = ?
+                """,
+                (
+                    new_config.get('targets', ''),
+                    new_config.get('nmap_parameters', ''),
+                    new_config.get('config_filepath', ''),
+                    new_config.get('ffuf_delay', ''),
+                    new_config.get('extra_commands_file', ''),
+                    new_config.get('ffuf_subdomain_wordlist', ''),
+                    new_config.get('ffuf_webpage_wordlist', ''),
+                    new_config.get('disable_chatgpt_api', '')
+                )
             )
             db.commit()
 
-            # then we update the current_config table, assuming that the config file is in the project root.
+            # update current_config table
             t = new_config.get('config_filepath').split('/')
-            db.execute("UPDATE current_config SET full_path = ?, filename = ?",
-                       (new_config.get('config_filepath'), t[len(t) - 1]))
+            db.execute(
+                "UPDATE current_config SET full_path = ?, filename = ?",
+                (new_config.get('config_filepath'), t[-1])
+            )
             db.commit()
 
             with open(new_config.get('config_filepath'), 'w') as file:
@@ -150,12 +143,6 @@ def create_app(test_config=None) -> Flask:
 
             config_entries = db.execute("SELECT * FROM config").fetchall()
             config = [dict(entry) for entry in config_entries]
-            targets = config[0]['single_target'] or open(config[0]['targets_file']).readlines() if config[0][
-                'targets_file'] else None
-
-            duplicate_targets = False
-            if config[0]['single_target'] != '' and config[0]['targets_file'] != '':
-                duplicate_targets = True
 
             extra_commands_filename = config[0].get('extra_commands_file')
             extra_commands = None
@@ -164,7 +151,6 @@ def create_app(test_config=None) -> Flask:
                 with open(extra_commands_filename) as f:
                     extra_commands = f.readlines()
 
-            # gets the relevant files in the current working directory
             files_in_dir = sorted(
                 [file for file in os.listdir(os.getcwd()) if
                  (file.endswith('.json') or file.endswith('.txt') or file.endswith(
@@ -172,17 +158,11 @@ def create_app(test_config=None) -> Flask:
                 key=lambda x: (not x.endswith('.json'), not x.endswith('.txt'), not x.endswith('.py'))
             )
 
-            if targets is None:
-                return render_template('index.html', duplicate_targets=duplicate_targets, results=config,
-                                       current_directory=os.getcwd(), files_in_directory=files_in_dir,
-                                       extra_commands=extra_commands)
-            else:
-                return render_template('index.html', duplicate_targets=duplicate_targets, results=config,
-                                       targets=targets, current_directory=os.getcwd(), files_in_directory=files_in_dir,
-                                       extra_commands=extra_commands)
+            return render_template('settings.html', results=config, current_directory=os.getcwd(),
+                                   files_in_directory=files_in_dir, extra_commands=extra_commands)
 
         else:
-            return "Something went wrong. Please upload a JSON file."
+            return error("Something went wrong. Please upload a JSON file.", url_for('settings'))
 
     @app.route('/view-targets-file')
     def view_targets_file() -> tuple[str, int] | Response:
@@ -249,6 +229,7 @@ def create_app(test_config=None) -> Flask:
         config_entries = db.execute("SELECT * FROM config").fetchall()
         config = [dict(entry) for entry in config_entries]
         extra_commands_filename = config[0]['extra_commands_file']
+        # if POST, handle the form submission
         if request.method == 'POST':
             form_data = request.form
             command = form_data.get('command').strip()
@@ -257,17 +238,19 @@ def create_app(test_config=None) -> Flask:
                 # print(command, file=f)
             with open(extra_commands_filename, 'r') as f:
                 extra_commands = f.readlines()
-            return render_template('add_commands.html', config=config, extra_commands=extra_commands)
+            return render_template('add_commands.html', config=config, extra_commands=extra_commands,
+                                   commands_file=extra_commands_filename)
 
         # if GET, render the page with config and any commands that have already been added
         try:
             with open(extra_commands_filename, 'r') as f:
                 extra_commands = f.readlines()
-                return render_template('add_commands.html', config=config, extra_commands=extra_commands)
+                return render_template('add_commands.html', config=config, extra_commands=extra_commands,
+                                       commands_file=extra_commands_filename)
         except FileNotFoundError:
             return error(
                 f"No extra commands file found in {config[0]['config_filepath']}. Please review your config and try again!",
-                url_for('index'))
+                url_for('settings'))
 
     @app.route('/edit-command', methods=['POST'])
     def edit_command():
@@ -299,71 +282,84 @@ def create_app(test_config=None) -> Flask:
     def update_config() -> Response:
         """
         This is for the button on the main/home page called "Update Config". What this does is it takes the data from
-        the textarea with the id="config" from index.html, and it uses it to update the config in the database and the config.json file in the directory root.
+        the textarea with the id="config" from settings.html, and it uses it to update the config in the database and the config.json file in the directory root.
         Then it reloads the main/home page with this updated config.
         :return: The homepage again with the updated config.
         """
         new_config = json.loads(request.form['config'])
+        targets = request.form['targets']
 
         # first update the config table
         db = get_db()
         db.execute(
-            "UPDATE config SET single_target = ?, multiple_targets = ?, targets_file = ?, nmap_parameters = ?, config_filepath = ?, ffuf_delay = ?, extra_commands_file = ?",
-            (new_config['single_target'],
-             new_config['multiple_targets'],
-             new_config['targets_file'],
-             new_config['nmap_parameters'],
-             new_config['config_filepath'],
-             new_config['ffuf_delay'],
-             new_config['extra_commands_file'])
+            """
+            UPDATE config SET
+                targets = ?,
+                nmap_parameters = ?,
+                config_filepath = ?,
+                ffuf_delay = ?,
+                extra_commands_file = ?,
+                ffuf_subdomain_wordlist = ?,
+                ffuf_webpage_wordlist = ?,
+                disable_chatgpt_api = ?
+            """,
+            (
+                targets,
+                new_config['nmap_parameters'],
+                new_config['config_filepath'],
+                new_config['ffuf_delay'],
+                new_config['extra_commands_file'],
+                new_config['ffuf_subdomain_wordlist'],
+                new_config['ffuf_webpage_wordlist'],
+                new_config['disable_chatgpt_api']
+            )
         )
         db.commit()
 
         # then we update the current_config table, assuming that the config file is in the project root.
         t = new_config['config_filepath'].split('/')
-        db.execute("UPDATE current_config SET full_path = ?, filename = ?",
-                   (new_config['config_filepath'], t[len(t) - 1]))
+        db.execute(
+            "UPDATE current_config SET full_path = ?, filename = ?",
+            (new_config['config_filepath'], t[-1])
+        )
         db.commit()
 
         # now we update config.json in the directory root
         cursor = db.execute(
-            "SELECT single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file FROM config")
+            """
+            SELECT
+                targets,
+                nmap_parameters,
+                config_filepath,
+                ffuf_delay,
+                extra_commands_file,
+                ffuf_subdomain_wordlist,
+                ffuf_webpage_wordlist,
+                disable_chatgpt_api
+            FROM config
+            """
+        )
         row = cursor.fetchone()
         if row:
             config_filepath = row["config_filepath"]
             with open(config_filepath, 'r') as outfile:
                 config_data = json.load(outfile)
-            config_data["single_target"] = row["single_target"]
-            config_data["multiple_targets"] = row["multiple_targets"]
-            config_data["targets_file"] = row["targets_file"]
-            config_data["nmap_parameters"] = row["nmap_parameters"]
-            config_data["config_filepath"] = row["config_filepath"]
-            config_data["ffuf_delay"] = row["ffuf_delay"]
-            config_data["extra_commands_file"] = row["extra_commands_file"]
+            config_data.update({
+                "targets": row["targets"],
+                "nmap_parameters": row["nmap_parameters"],
+                "config_filepath": row["config_filepath"],
+                "ffuf_delay": row["ffuf_delay"],
+                "extra_commands_file": row["extra_commands_file"],
+                "ffuf_subdomain_wordlist": row["ffuf_subdomain_wordlist"],
+                "ffuf_webpage_wordlist": row["ffuf_webpage_wordlist"],
+                "disable_chatgpt_api": row["disable_chatgpt_api"]
+            })
             with open(config_data["config_filepath"], 'w') as file:
                 json.dump(config_data, file, indent=4)
         else:
             print("No data found in the config table.")
 
-        return redirect(url_for('index'))
-
-    @app.route('/single-result')
-    def single_result() -> str:
-        """
-        The route for the single results page, which is displayed after a single target has been scanned.
-        :return: The render template of the single targets html file with the json data to be displayed.
-        """
-        # get the results from the session
-        result = session.get('scan_result_file', None)
-
-        if not result:
-            return "No results to display!"
-
-        with open(result, 'r') as f:
-            parsed_json = json.load(f)
-        print("")
-
-        return render_template('single_target_result.html', target=parsed_json['target'], result=parsed_json)
+        return redirect(url_for('settings'))
 
     @app.route('/multiple-results')
     def multiple_results() -> str:
@@ -386,35 +382,36 @@ def create_app(test_config=None) -> Flask:
         return render_template('multiple_targets_result.html', results=results)
 
     @app.route('/running', methods=['POST'])
-    def run_ripley() -> Response:
+    def run_ripley() -> Response | str:
         """
         When the 'run' button is pressed.
         :return: The redirect for either the multiple targets' page, or the single targets' page, depending on the config.
         """
         config = json.loads(request.form['running'])
-        single_target = config.get("single_target", "").strip()
-        multiple_targets = config.get("multiple_targets", [])
-        targets_file = config.get("targets_file", "").strip()
+        unparsed_targets = config.get('targets', '').strip().split(', ')
 
-        target_count = sum([bool(single_target), bool(multiple_targets), bool(targets_file)])
-        if target_count != 1:
-            raise Exception("You must specify exactly one of 'single_target', 'multiple_targets', or 'targets_file'.")
+        if not unparsed_targets:
+            return error("No targets found, or there is a target error! Please check your config.", url_for('settings'))
 
-        target_list = get_target_list(single_target, multiple_targets, targets_file)
+        if config.get("extra_commands_file"):
+            with open(config.get("extra_commands_file"), 'r') as f:
+                if not f.readlines():
+                    return error(
+                        f'Extra commands file option in populated in config but, the file {config.get("extra_commands_file")} is empty!',
+                        url_for('settings'))
 
-        # once target_list is filled, either run_on_multiple_targets or run_on_single_target is called based on the length
-        if len(target_list) > 1:
+        full_target_list = parse_targets(unparsed_targets)
+
+        if len(full_target_list) > 1:  # multiple targets
             start = time.time()
-            results_files = run_on_multiple_targets(target_list, config)
+            results_files = run_on_multiple_targets(full_target_list, config)
             print(f'########### {time.time() - start} seconds ###########')
             session['scan_results_files'] = results_files  # stores list of file paths in session
             return redirect(url_for('multiple_results'))
-        elif len(target_list) == 1:
-            result_file = run_on_single_target(target_list, config)
+        else:  # single target
+            result_file = run_on_single_target(full_target_list, config)
             session['scan_result_file'] = result_file
             return redirect(url_for('single_result'))
-        else:
-            raise Exception("Target list empty!")
 
     @app.route('/remove-extra-command', methods=['POST'])
     def remove_extra_command() -> str:
@@ -436,7 +433,7 @@ def create_app(test_config=None) -> Flask:
 
     @app.errorhandler(500)
     def internal_error(error):
-        return render_template('error.html', error_message="Internal server error!", redirect=url_for('index')), 500
+        return render_template('error.html', error_message="Internal server error!", redirect=url_for('settings')), 500
 
     def error(error_msg: str, full_redirect: str) -> str:
         """
@@ -463,7 +460,7 @@ def create_app(test_config=None) -> Flask:
     def set_config() -> Response:
         """
         This route sets the selected config file as the current config.
-        :return: The redirect to the index page.
+        :return: The redirect to the settings page.
         """
         selected_config = request.form['config_file']
         filename = os.path.basename(selected_config)
@@ -473,7 +470,7 @@ def create_app(test_config=None) -> Flask:
         config = parse_config_file(selected_config)
         load_config_into_db(config, selected_config)
         app.config['NO_CONFIG_FOUND'] = False
-        return redirect(url_for('index'))
+        return redirect(url_for('settings'))
 
     @app.before_request
     def check_for_config():
@@ -516,13 +513,54 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
     db = get_db()
     if config:
         db.execute(
-            "INSERT INTO config (single_target, multiple_targets, targets_file, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (config.get('single_target', ''),
-             config.get('multiple_targets', ''),
-             config.get('targets_file', ''),
-             config.get('nmap_parameters', ''),
-             config_filepath,
-             config.get('ffuf_delay', ''),
-             config.get('extra_commands_file', ''))
+            """
+            INSERT INTO config (
+                targets, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file, 
+                ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                config.get('targets', ''),
+                config.get('nmap_parameters', ''),
+                config_filepath,
+                config.get('ffuf_delay', ''),
+                config.get('extra_commands_file', ''),
+                config.get('ffuf_subdomain_wordlist', ''),
+                config.get('ffuf_webpage_wordlist', ''),
+                config.get('disable_chatgpt_api', ''),
+            )
         )
         db.commit()
+
+
+# parsing logic to make sure that targets is a list of strings
+def expand_ip_range(start_ip, end_ip):
+    """Expand an IP range from start_ip to end_ip."""
+    start = ipaddress.IPv4Address(start_ip)
+    end = ipaddress.IPv4Address(end_ip)
+    return [str(ipaddress.IPv4Address(ip)) for ip in range(int(start), int(end) + 1)]
+
+
+def expand_cidr(cidr):
+    """Expand a CIDR range to individual IPs."""
+    network = ipaddress.IPv4Network(cidr, strict=False)
+    return [str(ip) for ip in network]
+
+
+def parse_targets(target_list: list[str]) -> list[str]:
+    """
+    Parse the targets string and expand IP ranges and CIDR notations.
+    :param targets_string: The targets inputted by the user.
+    :return: The parsed and expanded list of targets.
+    """
+    expanded_components = []
+    for target in target_list:
+        if "-" in target and re.match(r"^\d+\.\d+\.\d+\.\d+-\d+\.\d+\.\d+\.\d+$", target):
+            start_ip, end_ip = target.split("-")
+            expanded_components.extend(expand_ip_range(start_ip, end_ip))
+        elif "/" in target and re.match(r"^\d+\.\d+\.\d+\.\d+/\d+$", target):
+            expanded_components.extend(expand_cidr(target))
+        else:
+            expanded_components.append(target)
+
+    return expanded_components

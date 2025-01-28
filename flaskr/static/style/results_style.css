@@ -1,0 +1,29 @@
+.collapsible {
+    cursor: pointer;
+    font-weight: bold;
+    padding: 10px;
+    background-color: #00005B;
+    border: 1px solid #ccc;
+    margin-top: 10px;
+    color: white;
+}
+
+.content {
+    padding: 10px;
+    border: 1px solid #ddd;
+    margin-top: -1px;
+    background-color: #00005B;
+    color: white;
+}
+
+.outer-content {
+    display: none;
+}
+
+.inner-content {
+    display: block;
+}
+
+body {
+    background-color: #00005B;
+}

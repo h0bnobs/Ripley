@@ -7,23 +7,13 @@
         button {
             margin-top: 10px;
         }
-
-        textarea {
-            width: 20%;
-            height: 150px;
-            margin-top: 10px;
-            font-family: monospace;
-            font-size: 14px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            background-color: #f4f4f4;
-        }
     </style>
+    <link rel="stylesheet" href="../static/style/basic_style.css">
 </head>
 <body>
-<button onclick="window.location.href='/'">Back</button><br>
-<h4>Type "{target}" anywhere in the input to visualise the command!</h4>
+<button onclick="window.location.href='/'">Homepage</button>
+<h3>Commands file: <span style="color: #FFA400">{{ commands_file }}</span></h3>
+<h4>Type <span style="color: #FFA400">"{target}"</span> anywhere in the input to visualise the command!</h4>
 <h4>Some examples are: "sslscan {target}:443" Or "curl -L https://{target}/"!</h4>
 <h4></h4>
 <form action="/add-commands" method="POST">
@@ -50,7 +40,7 @@
             {% for command in extra_commands %}
                 <p>{{ command }}
                     <button type="submit" name="command" value="{{ command }}" style="color: white; background-color: red;">Remove</button>
-                    <button type="button" class="edit-command" data-command="{{ command }}" data-line-number="{{ loop.index0 }}" style="color: white; background-color: blue;">Edit</button>
+                    <button type="button" class="edit-command" data-command="{{ command }}" data-line-number="{{ loop.index0 }}" style="color: white; background-color: #FFA400;">Edit</button>
                 </p>
             {% endfor %}
         </form>
