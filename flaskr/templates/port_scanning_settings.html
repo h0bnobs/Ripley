@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration</title>
+    <link rel="stylesheet" href="../static/style/basic_style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../static/js/port_scanning_settings.js"></script>
+</head>
+<body>
+    <div class="vertical-bar">
+        <a href="general-settings">General</a>
+        <a href="port-scanning-settings" class="active">Port Scanning</a>
+        <a href="host-discovery-settings">Host Discovery</a>
+        <a href="advanced-settings">Advanced Settings</a>
+    </div>
+
+    <div class="content">
+        <h2>Port scanning settings</h2>
+
+        <p>{{ config }}</p>
+
+        <form action="/update-config" method="POST">
+            <label for="ports" style="vertical-align: top;">Ports</label>
+            <textarea id="ports" name="ports_to_scan" placeholder="Example: 1-1024, 8080&#10;Leave blank for top 1000 most popular&#10;* for all ports">{{ ports_to_scan }}</textarea>
+            <br>
+            <label for="scan_type">Scan type</label>
+            <div class="scan_type_div">
+                <label for="tcp">TCP</label>
+                <input type="checkbox" id="tcp" name="scan_type" value="TCP" {% if config['scan_type'] == 'TCP' %}checked{% endif %}>
+                <label for="udp">UDP</label>
+                <input type="checkbox" id="udp" name="scan_type" value="UDP" {% if config['scan_type'] == 'UDP' %}checked{% endif %}>
+                <label for="syn">SYN</label>
+                <input type="checkbox" id="syn" name="scan_type" value="SYN" {% if config['scan_type'] == 'SYN' %}checked{% endif %}>
+            </div>
+            <br>
+            <button class="btn_margin2" type="submit">Save</button>
+            <p id="needs-saving" style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">Needs saving!</p>
+        </form>
+    </div>
+</body>
+</html>

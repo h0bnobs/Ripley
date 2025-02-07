@@ -26,7 +26,7 @@
     $(document).ready(function() {
         $('#command-input').on('input', function() {
             var inputText = $(this).val();
-            var targetValue = '{{config[0]["single_target"] }}';
+            var targetValue = '{{ config[0]["targets"].split(",")[0].strip() }}';
             var updatedText = inputText.replace('{target}', targetValue);
             $('#command-display').html('The command will be run exactly as:<br>' + updatedText);
         });

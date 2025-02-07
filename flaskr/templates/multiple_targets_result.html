@@ -11,7 +11,7 @@
 <body>
 <h1>Scan Results for Multiple Targets</h1>
 <button onclick="window.location.href='/'">Back</button>
-{% for target, result in results.items() %}
+{% for target, result in scan_results.items() %}
 <div class="collapsible outer-collapsible">Scan Results for Target: {{ target }}</div>
 <div class="content outer-content">
     <div class="results">

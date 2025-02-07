@@ -281,11 +281,11 @@ def is_target_webpage(target: str) -> bool:
     return False
 
 
-def run_nmap(target: str, flags: str) -> str:
+def run_nmap(target: str, nmap_settings: dict) -> str:
     """
     Runs the nmap tool on the target. Saves the output to a xml file in the flaskr/static/temp folder, which is cleared everytime the tool runs.
     :param target: The target to run nmap on.
-    :param flags: The flags to use with nmap.
+    :param nmap_settings:
     :return: The output of the nmap tool as a string or a CalledProcessError.
     """
     try:
@@ -294,7 +294,16 @@ def run_nmap(target: str, flags: str) -> str:
         # that the script knows, or just asking the user to not include these output flags, but have an option in the gui that handles this idk.
 
         # so right here we are adding the -oX flag because we assume It's not already there.
-        command = f"nmap {flags} -oX flaskr/static/temp/nmap-{target}.xml {target}"
+        # command = f"nmap {flags} -oX flaskr/static/temp/nmap-{target}.xml {target}"
+
+        # parse the nmap settings from the config file
+        #config["ports_to_scan"]
+        ports_to_scan = nmap_settings.get("ports_to_scan", "")
+        if ports_to_scan:
+            command = f"nmap -p {ports_to_scan} {target}"
+        else:
+            command = f"nmap {target}"
+
         spinner = Spinner()
         spinner.start()
         result = run_command_with_output_after(command)

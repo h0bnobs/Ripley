@@ -11,7 +11,7 @@
 
 <!-- Filter dropdown -->
 <label for="filter">Filter by date:</label>
-<select id="filter" onchange="filterResults()">
+<select id="filter" onchange="filterscan_results()">
     <option value="all">All</option>
     <option value="today">Today</option>
     <option value="last7days">Last 7 Days</option>
@@ -20,7 +20,7 @@
 
 <!-- Filter by target -->
 <label for="targetFilter">Filter by target:</label>
-<input type="text" id="targetFilter" oninput="filterResults()"><br><br>
+<input type="text" id="targetFilter" oninput="filterscan_results()"><br><br>
 
 <table border="1" id="scansTable">
     <thead>
@@ -34,7 +34,7 @@
     </tr>
     </thead>
     <tbody>
-    {% for result in results %}
+    {% for result in scan_results %}
     <tr>
         <td>{{ result['target'] }}</td>
         <td>{{ result['scan_start_time'] }}</td>
@@ -71,7 +71,7 @@
         sortButton.textContent = isAscending ? 'Sort' : 'Sort';
     }
 
-    function filterResults() {
+    function filterscan_results() {
         const filter = document.getElementById('filter').value;
         const targetFilter = document.getElementById('targetFilter').value.toLowerCase();
         const rows = document.querySelectorAll('#scansTable tbody tr');

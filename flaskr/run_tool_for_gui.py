@@ -144,9 +144,17 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
     :return: The concatenated string outputs of the tools.
     """
     target = target_list[0]  # assuming there is only one target in the list!
-    nmap_flags = config['nmap_parameters']
     host_output = run_host(target)
-    nmap_output = run_nmap(target, nmap_flags)
+
+    #todo
+    # the ports are going to be at config["ports_to_scan"] as a str "{port}, {port}"
+    # the tcp, udp and SYN settings are going to be at config["scan_type"] as a str "TCP" or "UDP" or "SYN"
+    nmap_settings = {
+        "ports_to_scan": config["ports_to_scan"],
+        "scan_type": config["scan_type"]
+    }
+    nmap_output = run_nmap(target, nmap_settings)
+
     smbclient_output = remove_ansi_escape_codes(run_smbclient(target))
     ftp_allowed = run_ftp(target)
     ftp_string = ('Anonymous FTP allowed!', 'light_green') if ftp_allowed else colored(

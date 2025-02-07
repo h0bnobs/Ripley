@@ -32,7 +32,7 @@ if __name__ == '__main__':
     os.makedirs('flaskr/static/screenshots', exist_ok=True)
     os.makedirs('flaskr/static/js', exist_ok=True)
     time.sleep(0.1)
-    webbrowser.open(f'http://localhost:{PORT}')
+    webbrowser.open(f'http://localhost:{PORT}/general-settings')
 
     # waits for the Flask thread to finish (or indefinitely)
     flask_thread.join()

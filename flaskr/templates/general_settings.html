@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration</title>
+    <link rel="stylesheet" href="../static/style/basic_style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../static/js/index.js"></script>
+</head>
+<body>
+    <div class="vertical-bar">
+        <a href="general-settings" class="active">General</a>
+        <a href="port-scanning-settings">Port Scanning</a>
+        <a href="host-discovery-settings">Host Discovery</a>
+        <a href="advanced-settings">Advanced Settings</a>
+    </div>
+
+    <div class="content">
+        <h2>View and edit current config that the tool will use:</h2>
+
+        <!-- hidden input for full_target_string -->
+        <!-- <input type="hidden" id="full_target_string" name="full_target_string" value="{{ full_target_string }}"> -->
+
+        <!-- upload a file for targets -->
+        <form id="upload-form" action="/upload-targets-file" method="POST" enctype="multipart/form-data">
+            <!-- label acting as the visible "button" -->
+            <label for="file-input" id="upload-file-label">Upload Targets</label>
+            <!-- hidden file input with proper id and name -->
+            <input type="file" id="file-input" name="file" onchange="this.form.submit()">
+        </form>
+
+        <form action="/update-config" method="POST">
+            <!-- textarea for targets -->
+            <textarea id="targets" name="targets" placeholder="Example: 192.168.1.1-192.168.1.4, 192.168.1.0/24, example.com" style="display: inline;">{% for entry in session['config'] %}{{ entry['targets'] }}{% if not loop.last %},{% endif %}{% endfor %}</textarea>            <br>
+
+{#            <p>{{ session['config'] }}</p>#}
+{#            <p>{{ session['files_in_directory'] }}</p>#}
+{#            <p>{{ session['extra_commands'] }}</p>#}
+{#            <p>{{ session['current_directory'] }}</p>#}
+
+            <!-- textarea for config -->
+            <textarea id="config" name="config">{
+    {% for entry in session['config'] %}"nmap_parameters": "{{ entry['nmap_parameters'] }}",
+    "config_filepath": "{{ entry['config_filepath'] }}",
+    "ffuf_delay": "{{ entry['ffuf_delay'] }}",
+    "extra_commands_file": "{{ entry['extra_commands_file'] }}",
+    "ffuf_subdomain_wordlist": "{{ entry['ffuf_subdomain_wordlist'] }}",
+    "ffuf_webpage_wordlist": "{{ entry['ffuf_webpage_wordlist'] }}",
+    "disable_chatgpt_api": "{{ entry['disable_chatgpt_api'] }}",
+    "ports_to_scan": "{{ entry['ports_to_scan'] }}",
+    "scan_type": "{{ entry['scan_type'] }}"{% if not loop.last %},{% endif %}{% endfor %}
+}
+            </textarea>
+            <br>
+            <!-- update config button -->
+            <button class="btn_margin" type="submit">Save</button>
+            <p id="needs-saving" style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">Needs saving!</p>
+        </form>
+        <br>
+
+        <!-- upload config file buttons -->
+        <form action="/upload-file" method="POST" enctype="multipart/form-data">
+            <input id="up" type="file" title="Upload config" name="file" class="file-upload" accept=".json">
+            <button type="submit">Upload File</button>
+        </form>
+
+        <!-- run button -->
+        <form action="/running" method="POST">
+            <input type="hidden" name="running" value='{
+            {% for entry in session['config'] %}
+            "targets": "{{ entry['targets'] }}",
+            "nmap_parameters": "{{ entry['nmap_parameters'] }}",
+            "config_filepath": "{{ entry['config_filepath'] }}",
+            "ffuf_delay": "{{ entry['ffuf_delay'] }}",
+            "extra_commands_file": "{{ entry['extra_commands_file'] }}",
+            "ffuf_subdomain_wordlist": "{{ entry['ffuf_subdomain_wordlist'] }}",
+            "ffuf_webpage_wordlist": "{{ entry['ffuf_webpage_wordlist'] }}",
+            "disable_chatgpt_api": "{{ entry['disable_chatgpt_api'] }}",
+            "ports_to_scan": "{{ entry['ports_to_scan'] }}",
+            "scan_type": "{{ entry['scan_type'] }}",
+            {% if not loop.last %},{% endif %}
+            {% endfor %}
+            }'>
+            <button class="btn_margin" type="submit">Run Ripley</button>
+        </form>
+
+        <!-- goto previous scans page -->
+        <form action="/previous-scans" method="GET">
+            <button class="btn_margin" type="submit">View last scans</button>
+        </form>
+
+        <!-- goto add/edit commands page -->
+        <form action="/add-commands" method="GET">
+            <button class="btn_margin" type="submit">Add/Edit commands</button>
+        </form>
+
+        <!-- displays extra commands -->
+        {% if session['extra_commands'] %}
+        {% endif %}
+            <h4 style="text-decoration: underline">Extra command(s) to be run:</h4>
+            <p id="commands-display"></p>
+            <script>
+                $(document).ready(function() {
+                    var commands = {{ session['extra_commands']|tojson }};
+                    var commandsText = commands.join('<br>');
+                    $('#commands-display').html(commandsText);
+                });
+            </script>
+
+        <!-- toggle file list visibility -->
+        <h3>Currently working in {{ session['current_directory'] }}</h3>
+        <button id="toggle-files-btn" class="btn_margin">Toggle Relevant Files in Working Directory</button>
+        <div id="files-list" style="display: none;">
+            <h4>Relevant files in the current directory:</h4>
+            <ul>
+                {% for file in session['files_in_directory'] %}
+                <li>{{ file }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

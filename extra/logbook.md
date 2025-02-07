@@ -41,7 +41,7 @@
 ### Tuesday 22nd October
 22/10/24 03:00pm
 - More work on the GUI. [Screenshot](screenshots/22-10-24.png)
-- Most changes were in [run_tool_for_gui.py](../flaskr/run_tool_for_gui.py), [run_commands.py](../scripts/run_commands.py), [ripley_cli.py](../ripley_cli.py) and the [index](../flaskr/templates/settings.html).
+- Most changes were in [run_tool_for_gui.py](../flaskr/run_tool_for_gui.py), [run_commands.py](../scripts/run_commands.py), [ripley_cli.py](../ripley_cli.py) and the [index](../flaskr/templates/general_settings.html).
 - Added the following tools/checks:
   - Get the contents of robots.txt file.
   - Use the dnsrecon tool to get subdomains.
@@ -68,7 +68,7 @@
 - Added Concurrency in [the multiple targets gui script](../flaskr/run_tool_for_gui.py).
   - I ran some tests so before when scanning 2 targets it took 82 seconds, and now it takes 43.
   - For a scan against 5 targets it took 172 seconds and now takes 43 seconds.
-- Added some [logic](../flaskr/static/js/index.js) for the [homepage](../flaskr/templates/settings.html) so that if the user is using a targets file, some of the contents are displayed and they can also view their entire targets file in the browser.
+- Added some [logic](../flaskr/static/js/index.js) for the [homepage](../flaskr/templates/general_settings.html) so that if the user is using a targets file, some of the contents are displayed and they can also view their entire targets file in the browser.
 - Also added [the previous scans page](../flaskr/templates/previous_scans.html) that uses the db to display the previous scans.
   - Currently, it is set up for single scans only. I need to think of a way to preperly display scans that were against more than 1 target.
 - Added a back button for all results pages.
@@ -140,4 +140,11 @@
 - Added an opt-out feature for the chatgpt api call. New option in the config as `disable_chatgpt_api`.
 - Changed the style of the GUI. Needs revising. [Screenshot](screenshots/28-01-25.png)
 - The homepage notifies the user if the config/targets need saving.
-- 
+
+### Friday 7th February
+07/02/25 11:00am
+- Migrated to using the `session` variable for most pages and endpoints.
+- Changed the homepage to `general_settings`
+  - Started changing the way that settings are inputted by the user by adding `general_settings`, `host_discovery_settings`, `port_scanning_settings` and `advanced_settings`.
+- Added the helper methods `reload_homepage` and `update_config_json_file`.
+- Added the ability to upload targets files.

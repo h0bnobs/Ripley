@@ -58,45 +58,97 @@ def create_app(test_config=None) -> Flask:
         # load the test config if passed in
         app.config.from_mapping(test_config)
 
-    @app.route('/')
-    def settings() -> str:
+    app.route('/')(lambda: redirect(url_for('general_settings')))
+
+    @app.route('/general-settings', methods=['GET'])
+    def general_settings() -> str:
         """
         The route for the homepage. Displays the config.
         :return: The render of the settings html file
         """
+        data = reload_homepage()
+        session['config'] = data["config"]
+        session['files_in_directory'] = data["files_in_directory"]
+        session['extra_commands'] = data["extra_commands"]
+        session['current_directory'] = os.getcwd()
+        print(session['config'])
+        return render_template('general_settings.html')
+
+    @app.route('/port-scanning-settings', methods=['GET'])
+    def port_scanning_settings() -> str:
+        """
+        The route for the port scanning settings page.
+        :return: The render template of the port scanning settings html file.
+        """
         db = get_db()
-        config_entries = db.execute("SELECT * FROM config").fetchall()
-        config = [dict(entry) for entry in config_entries]
+        c = db.execute("SELECT * FROM config").fetchall()
+        config = [dict(entry) for entry in c][0]
+        session['config'] = config
+        return render_template('port_scanning_settings.html', config=config, ports_to_scan=config["ports_to_scan"])
 
-        extra_commands_filename = config[0].get('extra_commands_file')
-        extra_commands = None
+    @app.route('/host-discovery-settings', methods=['GET'])
+    def host_discovery_settings() -> str:
+        """
+        The route for the port scanning settings page.
+        :return: The render template of the port scanning settings html file.
+        """
+        return render_template('host_discovery_settings.html')
 
-        if extra_commands_filename:
-            try:
-                with open(extra_commands_filename) as f:
-                    extra_commands = f.readlines()
-            except FileNotFoundError:
-                extra_commands = None
+    @app.route('/advanced-settings', methods=['GET'])
+    def advanced_settings() -> str:
+        """
+        The route for the port scanning settings page.
+        :return: The render template of the port scanning settings html file.
+        """
+        return render_template('advanced_settings.html')
 
-        files_in_dir = sorted(
-            [file for file in os.listdir(os.getcwd()) if
-             (file.endswith('.json') or file.endswith('.txt') or file.endswith('.py')) and file != 'requirements.txt'],
-            key=lambda x: (not x.endswith('.json'), not x.endswith('.txt'), not x.endswith('.py'))
-        )
+    @app.route('/upload-targets-file', methods=['POST'])
+    def upload_targets_file() -> Response | str:
+        """
+        This is for the "Upload Targets File" button on the general settings page.
+        It takes the data from the uploaded file and updates the config in the database and the config.json file in the directory root.
+        :return: The redirect to the general settings page.
+        """
+        file = request.files['file']
+        # accept .txt and no file extensions
+        if file.filename.endswith('.txt') or '.' not in file.filename:
+            upload_dir = os.path.join(app.root_path, 'static/temp')
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, f'{time.strftime("%d%m_%H%M%S")}_{file.filename}')
+            file.save(file_path)
 
-        return render_template('settings.html', results=config, current_directory=os.getcwd(),
-                               files_in_directory=files_in_dir, extra_commands=extra_commands)
+            with open(file_path, 'r') as f:
+                targets = ', '.join([line.strip() for line in f.readlines()])
+
+            # update targets in the database
+            db = get_db()
+            db.execute("UPDATE config SET targets = ?", (''.join(targets),))
+            db.commit()
+
+            # now we update config.json in the directory root
+            update_config_json_file()
+            # reload the page
+            data = reload_homepage()
+            session['config'] = data["config"]
+            session['files_in_directory'] = data["files_in_directory"]
+            session['extra_commands'] = data["extra_commands"]
+
+            return redirect(url_for('general_settings'))
+
+        else:
+            return error("Something went wrong. Please upload a text file with one target per line!",
+                         url_for('general_settings'))
 
     @app.route('/upload-file', methods=['POST'])
-    def check_file():
+    def upload_config_file() -> Response | str:
         """
-        This is for the "Upload Files" button on the main/home page. It checks if the file is a valid file, and if it is,
-        it writes the contents of the file to a temporary file in the static/temp directory and updates the config.
+        This is for the "Upload Config File" button on the general settings page.
+        It takes the data from the uploaded file and updates the config in the database and the config.json file in the directory root.
         :return: The redirect to the main/home page.
         """
         file = request.files['file']
         if file.filename.endswith('.json'):
-            upload_dir = os.path.join(app.root_path, 'uploaded_configs')
+            upload_dir = os.path.join(app.root_path, 'static/temp')
             os.makedirs(upload_dir, exist_ok=True)
             file_path = os.path.join(upload_dir, f'{time.strftime("%d%m_%H%M%S")}_{file.filename}')
             file.save(file_path)
@@ -104,6 +156,7 @@ def create_app(test_config=None) -> Flask:
             with open(file_path, 'r') as f:
                 new_config = json.load(f)
 
+            # update config table in db
             db = get_db()
             db.execute(
                 """
@@ -115,7 +168,9 @@ def create_app(test_config=None) -> Flask:
                     extra_commands_file = ?, 
                     ffuf_subdomain_wordlist = ?, 
                     ffuf_webpage_wordlist = ?, 
-                    disable_chatgpt_api = ?
+                    disable_chatgpt_api = ?,
+                    ports_to_scan = ?,
+                    scan_type = ?
                 """,
                 (
                     new_config.get('targets', ''),
@@ -125,7 +180,9 @@ def create_app(test_config=None) -> Flask:
                     new_config.get('extra_commands_file', ''),
                     new_config.get('ffuf_subdomain_wordlist', ''),
                     new_config.get('ffuf_webpage_wordlist', ''),
-                    new_config.get('disable_chatgpt_api', '')
+                    new_config.get('disable_chatgpt_api', ''),
+                    new_config.get('ports_to_scan', ''),
+                    new_config.get('scan_type', '')
                 )
             )
             db.commit()
@@ -141,47 +198,17 @@ def create_app(test_config=None) -> Flask:
             with open(new_config.get('config_filepath'), 'w') as file:
                 json.dump(new_config, file, indent=4)
 
-            config_entries = db.execute("SELECT * FROM config").fetchall()
-            config = [dict(entry) for entry in config_entries]
+            data = reload_homepage()
+            session['config'] = data["config"]
+            session['files_in_directory'] = data["files_in_directory"]
+            session['extra_commands'] = data["extra_commands"]
 
-            extra_commands_filename = config[0].get('extra_commands_file')
-            extra_commands = None
-
-            if extra_commands_filename:
-                with open(extra_commands_filename) as f:
-                    extra_commands = f.readlines()
-
-            files_in_dir = sorted(
-                [file for file in os.listdir(os.getcwd()) if
-                 (file.endswith('.json') or file.endswith('.txt') or file.endswith(
-                     '.py')) and file != 'requirements.txt'],
-                key=lambda x: (not x.endswith('.json'), not x.endswith('.txt'), not x.endswith('.py'))
-            )
-
-            return render_template('settings.html', results=config, current_directory=os.getcwd(),
-                                   files_in_directory=files_in_dir, extra_commands=extra_commands)
+            return redirect(url_for('general_settings'))
 
         else:
-            return error("Something went wrong. Please upload a JSON file.", url_for('settings'))
+            return error("Something went wrong. Please upload a JSON file.", url_for('general_settings'))
 
-    @app.route('/view-targets-file')
-    def view_targets_file() -> tuple[str, int] | Response:
-        """
-        Serves the targets file for viewing in the browser.
-        :return: The content of the targets file.
-        """
-        targets_filepath = request.args.get('filepath')
-        if not targets_filepath:
-            return "No targets file specified!", 400
-
-        try:
-            with open(targets_filepath, 'r') as file:
-                content = file.read()
-            return Response(content, mimetype='text/plain')
-        except FileNotFoundError:
-            return "Targets file not found!", 404
-
-    @app.route('/robots.txt')
+    @app.route('/robots.txt', methods=['GET'])
     def robots() -> Response:
         """
         The route for the robots.txt file.
@@ -189,7 +216,7 @@ def create_app(test_config=None) -> Flask:
         """
         return Response(robots_string(), mimetype='text/plain')
 
-    @app.route('/previous-scans')
+    @app.route('/previous-scans', methods=['GET'])
     def previous_scans() -> str:
         """
         The route for viewing previous scans.
@@ -198,7 +225,7 @@ def create_app(test_config=None) -> Flask:
         db = get_db()
         scan_results = db.execute("SELECT * FROM scan_results").fetchall()
         results = [dict(row) for row in scan_results]
-        return render_template('previous_scans.html', results=results)
+        return render_template('previous_scans.html', scan_results=results)
 
     @app.route('/view_single_previous_scan', methods=['POST'])
     def view_single_previous_scan() -> str:
@@ -250,7 +277,7 @@ def create_app(test_config=None) -> Flask:
         except FileNotFoundError:
             return error(
                 f"No extra commands file found in {config[0]['config_filepath']}. Please review your config and try again!",
-                url_for('settings'))
+                url_for('general_settings'))
 
     @app.route('/edit-command', methods=['POST'])
     def edit_command():
@@ -279,87 +306,132 @@ def create_app(test_config=None) -> Flask:
         return redirect(url_for('view_add_commands'))
 
     @app.route('/update-config', methods=['POST'])
-    def update_config() -> Response:
+    def update_config() -> Response | str:
         """
-        This is for the button on the main/home page called "Update Config". What this does is it takes the data from
-        the textarea with the id="config" from settings.html, and it uses it to update the config in the database and the config.json file in the directory root.
-        Then it reloads the main/home page with this updated config.
-        :return: The homepage again with the updated config.
+        This endpoint is for updating the config. It can be called from the settings pages (general, port scanning, etc.).
+        :return: A redirect to the settings page from which the request was made, or an error page if something went wrong.
         """
-        new_config = json.loads(request.form['config'])
-        targets = request.form['targets']
+        referer = request.headers.get('Referer')
 
-        # first update the config table
-        db = get_db()
-        db.execute(
-            """
-            UPDATE config SET
-                targets = ?,
-                nmap_parameters = ?,
-                config_filepath = ?,
-                ffuf_delay = ?,
-                extra_commands_file = ?,
-                ffuf_subdomain_wordlist = ?,
-                ffuf_webpage_wordlist = ?,
-                disable_chatgpt_api = ?
-            """,
-            (
-                targets,
-                new_config['nmap_parameters'],
-                new_config['config_filepath'],
-                new_config['ffuf_delay'],
-                new_config['extra_commands_file'],
-                new_config['ffuf_subdomain_wordlist'],
-                new_config['ffuf_webpage_wordlist'],
-                new_config['disable_chatgpt_api']
+        # if the request is coming from /general-settings:
+        if referer and 'general-settings' in referer:
+            new_config = json.loads(request.form['config'])
+            targets = request.form['targets']
+            # first update the config table
+            db = get_db()
+            db.execute(
+                """
+                UPDATE config SET
+                    targets = ?,
+                    nmap_parameters = ?,
+                    config_filepath = ?,
+                    ffuf_delay = ?,
+                    extra_commands_file = ?,
+                    ffuf_subdomain_wordlist = ?,
+                    ffuf_webpage_wordlist = ?,
+                    disable_chatgpt_api = ?,
+                    ports_to_scan = ?,
+                    scan_type = ?
+                """,
+                (
+                    targets,
+                    new_config['nmap_parameters'],
+                    new_config['config_filepath'],
+                    new_config['ffuf_delay'],
+                    new_config['extra_commands_file'],
+                    new_config['ffuf_subdomain_wordlist'],
+                    new_config['ffuf_webpage_wordlist'],
+                    new_config['disable_chatgpt_api'],
+                    new_config['ports_to_scan'],
+                    new_config['scan_type']
+                )
             )
-        )
-        db.commit()
+            db.commit()
 
-        # then we update the current_config table, assuming that the config file is in the project root.
-        t = new_config['config_filepath'].split('/')
-        db.execute(
-            "UPDATE current_config SET full_path = ?, filename = ?",
-            (new_config['config_filepath'], t[-1])
-        )
-        db.commit()
+            # then we update the current_config table, assuming that the config file is in the project root
+            t = new_config['config_filepath'].split('/')
+            db.execute(
+                "UPDATE current_config SET full_path = ?, filename = ?",
+                (new_config['config_filepath'], t[-1])
+            )
+            db.commit()
 
-        # now we update config.json in the directory root
-        cursor = db.execute(
-            """
-            SELECT
-                targets,
-                nmap_parameters,
-                config_filepath,
-                ffuf_delay,
-                extra_commands_file,
-                ffuf_subdomain_wordlist,
-                ffuf_webpage_wordlist,
-                disable_chatgpt_api
-            FROM config
-            """
-        )
-        row = cursor.fetchone()
-        if row:
-            config_filepath = row["config_filepath"]
-            with open(config_filepath, 'r') as outfile:
-                config_data = json.load(outfile)
-            config_data.update({
-                "targets": row["targets"],
-                "nmap_parameters": row["nmap_parameters"],
-                "config_filepath": row["config_filepath"],
-                "ffuf_delay": row["ffuf_delay"],
-                "extra_commands_file": row["extra_commands_file"],
-                "ffuf_subdomain_wordlist": row["ffuf_subdomain_wordlist"],
-                "ffuf_webpage_wordlist": row["ffuf_webpage_wordlist"],
-                "disable_chatgpt_api": row["disable_chatgpt_api"]
-            })
-            with open(config_data["config_filepath"], 'w') as file:
-                json.dump(config_data, file, indent=4)
+            # now we update config.json in the directory root
+            update_config_json_file()
+
+            # get the relevant data for the homepage and set the session variables for the general settings page
+            data = reload_homepage()
+            session['config'] = data["config"]
+            session['files_in_directory'] = data["files_in_directory"]
+            session['extra_commands'] = data["extra_commands"]
+
+            return redirect(url_for('general_settings'))
+
+        #if the request is coming from /port-scanning-settings:
+        elif referer and 'port-scanning-settings' in referer:
+            values = request.form.to_dict() # form data
+            if 'ports_to_scan' in values:
+                if '\r\n' in values['ports_to_scan']:
+                    values['ports_to_scan'] = values['ports_to_scan'].replace('\r\n', ', ')
+            old_config = session['config'] # old config from when save was pressed
+            for value in values: # update the old config with the new values
+                old_config[value] = values[value]
+
+            # update the config table
+            db = get_db()
+            db.execute(
+                """
+                UPDATE config SET
+                    targets = ?,
+                    nmap_parameters = ?,
+                    config_filepath = ?,
+                    ffuf_delay = ?,
+                    extra_commands_file = ?,
+                    ffuf_subdomain_wordlist = ?,
+                    ffuf_webpage_wordlist = ?,
+                    disable_chatgpt_api = ?,
+                    ports_to_scan = ?,
+                    scan_type = ?
+                """,
+                (
+                    old_config['targets'],
+                    old_config['nmap_parameters'],
+                    old_config['config_filepath'],
+                    old_config['ffuf_delay'],
+                    old_config['extra_commands_file'],
+                    old_config['ffuf_subdomain_wordlist'],
+                    old_config['ffuf_webpage_wordlist'],
+                    old_config['disable_chatgpt_api'],
+                    old_config['ports_to_scan'],
+                    old_config['scan_type']
+                )
+            )
+            db.commit()
+
+            # now we update config.json in the directory root
+            update_config_json_file()
+
+            # get the relevant data for the port scanning page and set the session variables
+            c = db.execute("SELECT * FROM config").fetchall()
+            config = [dict(entry) for entry in c][0]
+            session['config'] = config
+            session['ports_to_scan'] = config["ports_to_scan"]
+            return redirect(url_for('port_scanning_settings'))
+
         else:
-            print("No data found in the config table.")
+            return error("Something went wrong trying to update the config. Please try again!", url_for('port_scanning_settings'))
 
-        return redirect(url_for('settings'))
+    @app.route('/single-result')
+    def single_result() -> str:
+        result = session.get('scan_result_file', None)
+
+        if not result:
+            return "No result to display!"
+
+        with open(result, 'r') as f:
+            parsed_json = json.load(f)
+
+        return render_template('single_target_result.html', target=parsed_json["target"], result=parsed_json)
 
     @app.route('/multiple-results')
     def multiple_results() -> str:
@@ -379,7 +451,7 @@ def create_app(test_config=None) -> Flask:
                 target = result_data['target']
                 results[target] = result_data
 
-        return render_template('multiple_targets_result.html', results=results)
+        return render_template('multiple_targets_result.html', scan_results=results)
 
     @app.route('/running', methods=['POST'])
     def run_ripley() -> Response | str:
@@ -387,18 +459,19 @@ def create_app(test_config=None) -> Flask:
         When the 'run' button is pressed.
         :return: The redirect for either the multiple targets' page, or the single targets' page, depending on the config.
         """
-        config = json.loads(request.form['running'])
+        config = session.get('config')[0]
         unparsed_targets = config.get('targets', '').strip().split(', ')
 
         if not unparsed_targets:
-            return error("No targets found, or there is a target error! Please check your config.", url_for('settings'))
+            return error("No targets found, or there is a target error! Please check your config.",
+                         url_for('general_settings'))
 
         if config.get("extra_commands_file"):
             with open(config.get("extra_commands_file"), 'r') as f:
                 if not f.readlines():
                     return error(
                         f'Extra commands file option in populated in config but, the file {config.get("extra_commands_file")} is empty!',
-                        url_for('settings'))
+                        url_for('general_settings'))
 
         full_target_list = parse_targets(unparsed_targets)
 
@@ -414,7 +487,7 @@ def create_app(test_config=None) -> Flask:
             return redirect(url_for('single_result'))
 
     @app.route('/remove-extra-command', methods=['POST'])
-    def remove_extra_command() -> str:
+    def remove_extra_command() -> Response:
         """
         This is for the button on the add commands page that says "Remove" for each command.
         :return: The render template of the add commands html file with the command removed.
@@ -429,11 +502,14 @@ def create_app(test_config=None) -> Flask:
         commands = [cmd for cmd in commands if cmd.strip() != command_to_remove]
         with open(extra_commands_filename, 'w') as f:
             f.writelines(commands)
-        return render_template('add_commands.html', config=config, extra_commands=commands)
+        session['extra_commands'] = commands
+        session['config'] = config
+        return redirect(url_for('view_add_commands'))
 
     @app.errorhandler(500)
     def internal_error(error):
-        return render_template('error.html', error_message="Internal server error!", redirect=url_for('settings')), 500
+        return render_template('error.html', error_message=f"Internal server error!\n{error}",
+                               redirect=url_for('general_settings')), 500
 
     def error(error_msg: str, full_redirect: str) -> str:
         """
@@ -444,7 +520,7 @@ def create_app(test_config=None) -> Flask:
         """
         return render_template('error.html', error_message=error_msg, redirect=full_redirect)
 
-    @app.route('/select-config')
+    @app.route('/select-config', methods=['GET'])
     def select_config() -> str:
         """
         The route for selecting a config file if no current config is found.
@@ -470,7 +546,8 @@ def create_app(test_config=None) -> Flask:
         config = parse_config_file(selected_config)
         load_config_into_db(config, selected_config)
         app.config['NO_CONFIG_FOUND'] = False
-        return redirect(url_for('settings'))
+        session['config'] = config
+        return redirect(url_for('general_settings'))
 
     @app.before_request
     def check_for_config():
@@ -516,8 +593,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
             """
             INSERT INTO config (
                 targets, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file, 
-                ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, scan_type
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 config.get('targets', ''),
@@ -528,6 +605,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                 config.get('ffuf_subdomain_wordlist', ''),
                 config.get('ffuf_webpage_wordlist', ''),
                 config.get('disable_chatgpt_api', ''),
+                config.get('ports_to_scan', ''),
+                config.get('scan_type', '')
             )
         )
         db.commit()
@@ -550,7 +629,7 @@ def expand_cidr(cidr):
 def parse_targets(target_list: list[str]) -> list[str]:
     """
     Parse the targets string and expand IP ranges and CIDR notations.
-    :param targets_string: The targets inputted by the user.
+    :param target_list: The targets inputted by the user.
     :return: The parsed and expanded list of targets.
     """
     expanded_components = []
@@ -564,3 +643,76 @@ def parse_targets(target_list: list[str]) -> list[str]:
             expanded_components.append(target)
 
     return expanded_components
+
+
+def reload_homepage() -> dict:
+    """
+    Gets the config from the database and returns it as a dictionary. The config variable stored at 'config' here, is a list with 1 element which is a dict.
+    The relevant files in the directory are stored at 'files_in_directory' and the extra commands are stored at 'extra_commands'.
+    :returns: The dictionary containing the config, files in the directory, and extra commands.
+    """
+    # reload the page
+    db = get_db()
+    config_entries = db.execute("SELECT * FROM config").fetchall()
+    config = [dict(entry) for entry in config_entries] # list containing one element which is a dict.
+
+    extra_commands_filename = config[0].get('extra_commands_file')
+    extra_commands = None
+
+    if extra_commands_filename:
+        with open(extra_commands_filename) as f:
+            extra_commands = f.readlines()
+
+    files_in_dir = sorted(
+        [file for file in os.listdir(os.getcwd()) if
+         (file.endswith('.json') or file.endswith('.txt') or file.endswith(
+             '.py')) and file != 'requirements.txt'],
+        key=lambda x: (not x.endswith('.json'), not x.endswith('.txt'), not x.endswith('.py'))
+    )
+
+    return {
+        'config': config,
+        'files_in_directory': files_in_dir,
+        'extra_commands': extra_commands
+    }
+
+def update_config_json_file():
+    db = get_db()
+    cursor = db.execute(
+        """
+        SELECT
+            targets,
+            nmap_parameters,
+            config_filepath,
+            ffuf_delay,
+            extra_commands_file,
+            ffuf_subdomain_wordlist,
+            ffuf_webpage_wordlist,
+            disable_chatgpt_api,
+            ports_to_scan,
+            scan_type
+        FROM config
+        """
+    )
+    row = cursor.fetchone()
+    if row:
+        config_filepath = row["config_filepath"]
+        with open(config_filepath, 'r') as outfile:
+            config_data = json.load(outfile)
+        config_data.update({
+            "targets": row["targets"],
+            "nmap_parameters": row["nmap_parameters"],
+            "config_filepath": row["config_filepath"],
+            "ffuf_delay": row["ffuf_delay"],
+            "extra_commands_file": row["extra_commands_file"],
+            "ffuf_subdomain_wordlist": row["ffuf_subdomain_wordlist"],
+            "ffuf_webpage_wordlist": row["ffuf_webpage_wordlist"],
+            "disable_chatgpt_api": row["disable_chatgpt_api"],
+            "ports_to_scan": row["ports_to_scan"],
+            "scan_type": row["scan_type"]
+        })
+        with open(config_data["config_filepath"], 'w') as file:
+            json.dump(config_data, file, indent=4)
+            return True
+    else:
+        return False
