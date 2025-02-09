@@ -1,8 +1,12 @@
 """
 Script to make calls to openai's chatgpt api.
 """
-from openai import OpenAI
-client = OpenAI()
+from openai import OpenAI, OpenAIError
+
+try:
+    client = OpenAI()
+except OpenAIError as e:
+    pass
 
 
 def make_chatgpt_api_call(results: dict[str, str]) -> str:

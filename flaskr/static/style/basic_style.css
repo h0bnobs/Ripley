@@ -22,22 +22,31 @@
 }
 
 #ports {
-    display: inline;
     width: 31%;
     height: 100px;
     font-family: "Aeonik Pro", sans-serif;
     font-size: 14px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f4f4f4;
-    margin-left: 100px;
 }
 
-.scan_type_div {
-    margin-left: 59px;
-    margin-top: 50px;
+.form-label {
     display: inline-block;
+    width: 150px;
+    vertical-align: top;
+}
+
+textarea, .scan_type_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div {
+    display: inline-block;
+    vertical-align: top;
+    margin-left: 10px;
+    margin-bottom: 40px;
+}
+
+#os_detection_warning, #aggressive_scan_warning {
+    font-size: 13px;
+    color: #FFA400;
+    font-weight: bolder;
+    font-family: 'Aeonik Pro', sans-serif;
+    display: inline;
 }
 
 .btn_margin2 {

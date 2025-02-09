@@ -156,38 +156,10 @@ def create_app(test_config=None) -> Flask:
             with open(file_path, 'r') as f:
                 new_config = json.load(f)
 
-            # update config table in db
-            db = get_db()
-            db.execute(
-                """
-                UPDATE config SET 
-                    targets = ?,
-                    nmap_parameters = ?, 
-                    config_filepath = ?, 
-                    ffuf_delay = ?, 
-                    extra_commands_file = ?, 
-                    ffuf_subdomain_wordlist = ?, 
-                    ffuf_webpage_wordlist = ?, 
-                    disable_chatgpt_api = ?,
-                    ports_to_scan = ?,
-                    scan_type = ?
-                """,
-                (
-                    new_config.get('targets', ''),
-                    new_config.get('nmap_parameters', ''),
-                    new_config.get('config_filepath', ''),
-                    new_config.get('ffuf_delay', ''),
-                    new_config.get('extra_commands_file', ''),
-                    new_config.get('ffuf_subdomain_wordlist', ''),
-                    new_config.get('ffuf_webpage_wordlist', ''),
-                    new_config.get('disable_chatgpt_api', ''),
-                    new_config.get('ports_to_scan', ''),
-                    new_config.get('scan_type', '')
-                )
-            )
-            db.commit()
+            update_config_table(new_config)
 
             # update current_config table
+            db = get_db()
             t = new_config.get('config_filepath').split('/')
             db.execute(
                 "UPDATE current_config SET full_path = ?, filename = ?",
@@ -317,39 +289,13 @@ def create_app(test_config=None) -> Flask:
         if referer and 'general-settings' in referer:
             new_config = json.loads(request.form['config'])
             targets = request.form['targets']
+            new_config["targets"] = targets
             # first update the config table
-            db = get_db()
-            db.execute(
-                """
-                UPDATE config SET
-                    targets = ?,
-                    nmap_parameters = ?,
-                    config_filepath = ?,
-                    ffuf_delay = ?,
-                    extra_commands_file = ?,
-                    ffuf_subdomain_wordlist = ?,
-                    ffuf_webpage_wordlist = ?,
-                    disable_chatgpt_api = ?,
-                    ports_to_scan = ?,
-                    scan_type = ?
-                """,
-                (
-                    targets,
-                    new_config['nmap_parameters'],
-                    new_config['config_filepath'],
-                    new_config['ffuf_delay'],
-                    new_config['extra_commands_file'],
-                    new_config['ffuf_subdomain_wordlist'],
-                    new_config['ffuf_webpage_wordlist'],
-                    new_config['disable_chatgpt_api'],
-                    new_config['ports_to_scan'],
-                    new_config['scan_type']
-                )
-            )
-            db.commit()
+            update_config_table(new_config)
 
             # then we update the current_config table, assuming that the config file is in the project root
             t = new_config['config_filepath'].split('/')
+            db = get_db()
             db.execute(
                 "UPDATE current_config SET full_path = ?, filename = ?",
                 (new_config['config_filepath'], t[-1])
@@ -369,49 +315,38 @@ def create_app(test_config=None) -> Flask:
 
         #if the request is coming from /port-scanning-settings:
         elif referer and 'port-scanning-settings' in referer:
-            values = request.form.to_dict() # form data
+            values = request.form.to_dict()  # form data
+
+            # parse the ports to scan
             if 'ports_to_scan' in values:
                 if '\r\n' in values['ports_to_scan']:
                     values['ports_to_scan'] = values['ports_to_scan'].replace('\r\n', ', ')
-            old_config = session['config'] # old config from when save was pressed
-            for value in values: # update the old config with the new values
-                old_config[value] = values[value]
+
+            old_config = session['config']  # old config from when save was pressed
+
+            # aggressive_scan is either True or nothing when its coming in here from the form.
+            if 'aggressive_scan' in values:
+                old_config['aggressive_scan'] = 'True'
+            elif 'aggressive_scan' not in values:
+                old_config['aggressive_scan'] = 'False'
+
+            if 'os_detection' in values:
+                old_config['os_detection'] = 'True'
+            elif 'os_detection' not in values:
+                old_config['os_detection'] = 'False'
+
+            for value in values:  # update the old config with the new values
+                if value != 'aggressive_scan':
+                    old_config[value] = values[value]
 
             # update the config table
-            db = get_db()
-            db.execute(
-                """
-                UPDATE config SET
-                    targets = ?,
-                    nmap_parameters = ?,
-                    config_filepath = ?,
-                    ffuf_delay = ?,
-                    extra_commands_file = ?,
-                    ffuf_subdomain_wordlist = ?,
-                    ffuf_webpage_wordlist = ?,
-                    disable_chatgpt_api = ?,
-                    ports_to_scan = ?,
-                    scan_type = ?
-                """,
-                (
-                    old_config['targets'],
-                    old_config['nmap_parameters'],
-                    old_config['config_filepath'],
-                    old_config['ffuf_delay'],
-                    old_config['extra_commands_file'],
-                    old_config['ffuf_subdomain_wordlist'],
-                    old_config['ffuf_webpage_wordlist'],
-                    old_config['disable_chatgpt_api'],
-                    old_config['ports_to_scan'],
-                    old_config['scan_type']
-                )
-            )
-            db.commit()
+            update_config_table(old_config)
 
             # now we update config.json in the directory root
             update_config_json_file()
 
             # get the relevant data for the port scanning page and set the session variables
+            db = get_db()
             c = db.execute("SELECT * FROM config").fetchall()
             config = [dict(entry) for entry in c][0]
             session['config'] = config
@@ -419,7 +354,8 @@ def create_app(test_config=None) -> Flask:
             return redirect(url_for('port_scanning_settings'))
 
         else:
-            return error("Something went wrong trying to update the config. Please try again!", url_for('port_scanning_settings'))
+            return error("Something went wrong trying to update the config. Please try again!",
+                         url_for('port_scanning_settings'))
 
     @app.route('/single-result')
     def single_result() -> str:
@@ -566,7 +502,6 @@ def create_app(test_config=None) -> Flask:
         else:
             config = parse_config_file(config_path)
             load_config_into_db(config, config_path)
-
     return app
 
 
@@ -593,8 +528,9 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
             """
             INSERT INTO config (
                 targets, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file, 
-                ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, scan_type
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
+                scan_type, aggressive_scan, scan_speed, os_detection
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 config.get('targets', ''),
@@ -606,7 +542,10 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                 config.get('ffuf_webpage_wordlist', ''),
                 config.get('disable_chatgpt_api', ''),
                 config.get('ports_to_scan', ''),
-                config.get('scan_type', '')
+                config.get('scan_type', ''),
+                config.get('aggressive_scan', ''),
+                config.get('scan_speed', ''),
+                config.get('os_detection', '')
             )
         )
         db.commit()
@@ -654,7 +593,7 @@ def reload_homepage() -> dict:
     # reload the page
     db = get_db()
     config_entries = db.execute("SELECT * FROM config").fetchall()
-    config = [dict(entry) for entry in config_entries] # list containing one element which is a dict.
+    config = [dict(entry) for entry in config_entries]  # list containing one element which is a dict.
 
     extra_commands_filename = config[0].get('extra_commands_file')
     extra_commands = None
@@ -676,6 +615,7 @@ def reload_homepage() -> dict:
         'extra_commands': extra_commands
     }
 
+
 def update_config_json_file():
     db = get_db()
     cursor = db.execute(
@@ -690,7 +630,10 @@ def update_config_json_file():
             ffuf_webpage_wordlist,
             disable_chatgpt_api,
             ports_to_scan,
-            scan_type
+            scan_type,
+            aggressive_scan,
+            scan_speed,
+            os_detection
         FROM config
         """
     )
@@ -709,10 +652,52 @@ def update_config_json_file():
             "ffuf_webpage_wordlist": row["ffuf_webpage_wordlist"],
             "disable_chatgpt_api": row["disable_chatgpt_api"],
             "ports_to_scan": row["ports_to_scan"],
-            "scan_type": row["scan_type"]
+            "scan_type": row["scan_type"],
+            "aggressive_scan": row["aggressive_scan"],
+            "scan_speed": row["scan_speed"],
+            "os_detection": row["os_detection"]
         })
         with open(config_data["config_filepath"], 'w') as file:
             json.dump(config_data, file, indent=4)
             return True
     else:
         return False
+
+
+def update_config_table(config):
+    if isinstance(config, dict):
+        db = get_db()
+        db.execute(
+            """
+            UPDATE config SET 
+                targets = ?,
+                nmap_parameters = ?, 
+                config_filepath = ?, 
+                ffuf_delay = ?, 
+                extra_commands_file = ?, 
+                ffuf_subdomain_wordlist = ?, 
+                ffuf_webpage_wordlist = ?, 
+                disable_chatgpt_api = ?,
+                ports_to_scan = ?,
+                scan_type = ?,
+                aggressive_scan = ?,
+                scan_speed = ?,
+                os_detection = ?
+            """,
+            (
+                config.get('targets', ''),
+                config.get('nmap_parameters', ''),
+                config.get('config_filepath', ''),
+                config.get('ffuf_delay', ''),
+                config.get('extra_commands_file', ''),
+                config.get('ffuf_subdomain_wordlist', ''),
+                config.get('ffuf_webpage_wordlist', ''),
+                config.get('disable_chatgpt_api', ''),
+                config.get('ports_to_scan', ''),
+                config.get('scan_type', ''),
+                config.get('aggressive_scan', ''),
+                config.get('scan_speed', ''),
+                config.get('os_detection', '')
+            )
+        )
+        db.commit()

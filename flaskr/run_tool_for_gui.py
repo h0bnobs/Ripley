@@ -12,7 +12,7 @@ from flaskr import get_db
 from ripley_cli import run_host, run_nmap, run_smbclient, run_ftp, get_screenshot, \
     get_robots_file, run_dns_recon, run_ffuf_subdomain, is_target_webpage, run_ffuf_webpage, run_wpscan
 from scripts.chatgpt_call import make_chatgpt_api_call
-from scripts.run_commands import run_command_no_output, run_command_with_output_after, run_command_live_output
+from scripts.run_commands import run_command_no_output, run_command_with_output_after
 from scripts.utils import remove_ansi_escape_codes, gui_banner, COLOURS, remove_leading_newline, is_wordpress_site
 import concurrent.futures
 from flask import current_app
@@ -21,9 +21,15 @@ from flask import current_app
 def run_on_multiple_targets(target_list: List[str], config: Dict[str, str]) -> List[str]:
     def process_target(app, target: str) -> str:
         with app.app_context():
-            nmap_flags = config['nmap_parameters']
             tasks = []
-            nmap_output = run_nmap(target, nmap_flags)
+            nmap_settings = {
+                "ports_to_scan": config["ports_to_scan"],
+                "scan_type": config["scan_type"],
+                "aggressive_scan": config["aggressive_scan"],
+                "scan_speed": config["scan_speed"],
+                "os_detection": config["os_detection"]
+            }
+            nmap_output = run_nmap(target, nmap_settings)
             is_webpage = is_target_webpage(target)
             if is_webpage:
                 print(f'{COLOURS["warn"]} Starting website tasks concurrently. {COLOURS["end"]}')
@@ -151,7 +157,10 @@ def run_on_single_target(target_list: List[str], config: Dict[str, str]) -> str:
     # the tcp, udp and SYN settings are going to be at config["scan_type"] as a str "TCP" or "UDP" or "SYN"
     nmap_settings = {
         "ports_to_scan": config["ports_to_scan"],
-        "scan_type": config["scan_type"]
+        "scan_type": config["scan_type"],
+        "aggressive_scan": config["aggressive_scan"],
+        "scan_speed": config["scan_speed"],
+        "os_detection": config["os_detection"]
     }
     nmap_output = run_nmap(target, nmap_settings)
 

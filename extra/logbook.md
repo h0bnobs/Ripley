@@ -148,3 +148,9 @@
   - Started changing the way that settings are inputted by the user by adding `general_settings`, `host_discovery_settings`, `port_scanning_settings` and `advanced_settings`.
 - Added the helper methods `reload_homepage` and `update_config_json_file`.
 - Added the ability to upload targets files.
+
+### Sunday 9th February
+09/02/25 03:20pm
+- Added `scan_type`, `aggressive_scan`, `scan_speed` and `os_detection` to the config and the `port_scanning_settings` page.
+- Changed the `update_config` logic.
+- Added `default_config.json` and fixed `chatgpt_call.py`.

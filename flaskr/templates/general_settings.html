@@ -49,7 +49,10 @@
     "ffuf_webpage_wordlist": "{{ entry['ffuf_webpage_wordlist'] }}",
     "disable_chatgpt_api": "{{ entry['disable_chatgpt_api'] }}",
     "ports_to_scan": "{{ entry['ports_to_scan'] }}",
-    "scan_type": "{{ entry['scan_type'] }}"{% if not loop.last %},{% endif %}{% endfor %}
+    "scan_type": "{{ entry['scan_type'] }}",
+    "aggressive_scan": "{{ entry['aggressive_scan'] }}",
+    "scan_speed": "{{ entry['scan_speed'] }}",
+    "os_detection": "{{ entry['os_detection'] }}"{% if not loop.last %},{% endif %}{% endfor %}
 }
             </textarea>
             <br>
@@ -78,7 +81,10 @@
             "ffuf_webpage_wordlist": "{{ entry['ffuf_webpage_wordlist'] }}",
             "disable_chatgpt_api": "{{ entry['disable_chatgpt_api'] }}",
             "ports_to_scan": "{{ entry['ports_to_scan'] }}",
-            "scan_type": "{{ entry['scan_type'] }}",
+            "scan_type": "{{ entry['scan_type'] }}"
+            "aggressive_scan": "{{ entry['aggressive_scan'] }}",
+            "scan_speed": "{{ entry['scan_speed'] }}",
+            "os_detection": "{{ entry['os_detection'] }}"
             {% if not loop.last %},{% endif %}
             {% endfor %}
             }'>

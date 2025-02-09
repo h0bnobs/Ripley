@@ -1,0 +1,14 @@
+{
+    "nmap_parameters": "",
+    "port_to_scan": "",
+    "config_filepath": "/home/max/temp/Ripley/default_config.json",
+    "ffuf_delay": "0.1",
+    "extra_commands_file": "",
+    "ffuf_subdomain_wordlist": "",
+    "ffuf_webpage_wordlist": "",
+    "disable_chatgpt_api": "true",
+    "targets": "www.google.co.uk",
+    "ports_to_scan": "",
+    "scan_type": "SYN",
+    "aggressive_scan": "False"
+}

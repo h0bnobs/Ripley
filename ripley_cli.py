@@ -1,15 +1,11 @@
-import argparse
-import ftplib
-import os
-import time
+import argparse, subprocess, os, time, ftplib, concurrent.futures, re, concurrent.futures
 from argparse import Namespace
 from subprocess import CompletedProcess, CalledProcessError
 from typing import List, Dict, Type, IO
-import re
-import concurrent.futures
 from selenium.common import WebDriverException
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
 from termcolor import colored
-import subprocess
 from flaskr import get_db
 from flask import current_app
 from scripts.chatgpt_call import make_chatgpt_api_call
@@ -17,8 +13,6 @@ from scripts.run_commands import run_command_with_output_after, run_command_live
     run_command_live_output, run_command_no_output
 from scripts.utils import COLOURS, Spinner, cli_banner, parse_config_file, find_full_filepath, remove_ansi_escape_codes, \
     parse_nmap_xml, remove_leading_newline
-from selenium import webdriver
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 def parse_args() -> Namespace:
@@ -283,35 +277,86 @@ def is_target_webpage(target: str) -> bool:
 
 def run_nmap(target: str, nmap_settings: dict) -> str:
     """
-    Runs the nmap tool on the target. Saves the output to a xml file in the flaskr/static/temp folder, which is cleared everytime the tool runs.
+    Runs the nmap tool on the target.
     :param target: The target to run nmap on.
-    :param nmap_settings:
     :return: The output of the nmap tool as a string or a CalledProcessError.
     """
-    try:
-        # todo: right now we are assuming that the user has not included any flags that will save the output to a file.
-        # This needs to be addressed in some way either adds logic that will copy the user's output file to the temp directory with a name
-        # that the script knows, or just asking the user to not include these output flags, but have an option in the gui that handles this idk.
+    command = parse_nmap_settings(nmap_settings, target)
+    spinner = Spinner()
+    spinner.start()
+    result = run_command_live_output(command)
+    #result = run_command_with_output_after(command)
+    spinner.stop()
+    return result
 
-        # so right here we are adding the -oX flag because we assume It's not already there.
-        # command = f"nmap {flags} -oX flaskr/static/temp/nmap-{target}.xml {target}"
 
-        # parse the nmap settings from the config file
-        #config["ports_to_scan"]
-        ports_to_scan = nmap_settings.get("ports_to_scan", "")
-        if ports_to_scan:
-            command = f"nmap -p {ports_to_scan} {target}"
-        else:
-            command = f"nmap {target}"
+def parse_nmap_settings(nmap_settings: dict, target: str) -> str:
+    """
+    Takes the nmap settings and target and produces a valid nmap command based off these
+    :param nmap_settings: The nmap settings as a string.
+    :param target: The target to run nmap on.
+    :return: The nmap command as a string.
+    """
+    ports_to_scan = nmap_settings.get("ports_to_scan", "")
+    scan_type = nmap_settings.get("scan_type", "")
+    aggressive_scan = nmap_settings.get("aggressive_scan", "")
+    scan_speed = nmap_settings.get("scan_speed", "")
+    os_detection = nmap_settings.get("os_detection", "")
+    command = 'nmap'
 
-        spinner = Spinner()
-        spinner.start()
-        result = run_command_with_output_after(command)
-        spinner.stop()
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
-        return error_message
+    # ports parsing logic
+    if ports_to_scan:
+        ports = ports_to_scan.split(', ')
+        if len(ports) == 1:  # if only one value is given
+            if ports[0] == '*':  # if all ports
+                command += f" -p-"  # scan all ports
+            else:
+                command += f" -p {ports[0]}"
+
+        else:  # if more than 1 port in ports_to_scan
+            expanded_ports = []
+            for port in ports:
+                if '*' in port:  # ignore it at this point
+                    continue
+                if '-' in port:  # if the ports contain a range
+                    start_port, end_port = map(int, port.split('-'))
+                    expanded_ports.extend(range(start_port, end_port + 1))
+                else:  # if the port is a single port just add it to the list as normal
+                    expanded_ports.append(port)
+            ports_to_scan = ','.join(map(str, expanded_ports))
+            command += f" -p {ports_to_scan}"
+
+    elif ports_to_scan == '':  # if the user has not specified any ports to scan use top 1k as default
+        command += f" --top-ports 1000"
+
+    # scan type parsing logic
+    if scan_type == 'SYN':
+        command += f" -sS"
+    elif scan_type == 'UDP':
+        command += f" -sU"
+    elif scan_type == 'TCP':
+        command += f" -sT"
+
+    # aggressive scan parsing logic
+    if aggressive_scan == 'True':
+        command += f" -A"
+
+    # scan speed parsing logic
+    if scan_speed:
+        command += f" -T{scan_speed}"
+
+    # os detection parsing logic
+    if os_detection == 'True':
+        command += f" -O"
+
+    # todo logic here for the output file, eg if the user wants to save the output to a file, then change it from this:
+    #   because the file in the form `-oX flaskr/static/temp/nmap-{target}.xml` is used in the is_target_webpage function, so if the user wants to save the output
+    #       to a file, then we should copy that custom file to that one^
+
+    command += f" -oX flaskr/static/temp/nmap-{target}.xml"
+
+    command += f" {target}"
+    return command
 
 
 def run_ftp(target: str) -> bool:
@@ -549,7 +594,11 @@ def get_screenshot(target: str) -> str:
     screenshot_path = ""
     for url in attempts:
         try:
-            chromedriver = webdriver.Chrome()
+            chrome_options = Options()
+            chrome_options.add_argument("--headless")  # Run in headless mode
+            chrome_options.add_argument("--no-sandbox")  # Required for some environments
+            chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+            chromedriver = webdriver.Chrome(options=chrome_options)
             chromedriver.set_window_size(1500, 1080)
             chromedriver.set_page_load_timeout(10)
             chromedriver.get(url)
