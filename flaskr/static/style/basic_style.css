@@ -34,7 +34,12 @@
     vertical-align: top;
 }
 
-textarea, .scan_type_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div {
+#host_timeout {
+    width: 89px;
+    height: 14px;
+}
+
+textarea, .scan_type_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div, .ping_hosts_div, .ping_method_div {
     display: inline-block;
     vertical-align: top;
     margin-left: 10px;

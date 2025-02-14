@@ -5,6 +5,8 @@ $(document).ready(function () {
     var synChecked = $('#syn').is(':checked');
     var aggressiveChecked = $('#aggressive_scan').is(':checked');
     var osDetectionChecked = $('#os_detection').is(':checked');
+    var originalHostTimeout = $('#host_timeout').val();
+    var originalScanSpeed = $('#scan_speed').val();
 
     $('#needs-saving').css('display', 'none');
 
@@ -21,6 +23,24 @@ $(document).ready(function () {
     $('#ports').on('input', function () {
         var newPorts = $('#ports').val();
         if (newPorts !== originalPorts ) {
+            $('#needs-saving').css('display', 'inline');
+        } else {
+            $('#needs-saving').css('display', 'none');
+        }
+    });
+
+    $('#host_timeout').on('input', function () {
+        var newHostTimeout = $('#host_timeout').val();
+        if (newHostTimeout !== originalHostTimeout ) {
+            $('#needs-saving').css('display', 'inline');
+        } else {
+            $('#needs-saving').css('display', 'none');
+        }
+    });
+
+    $('#scan_speed').on('input', function () {
+        var newScanSpeed = $('#scan_speed').val();
+        if (newScanSpeed !== originalScanSpeed) {
             $('#needs-saving').css('display', 'inline');
         } else {
             $('#needs-saving').css('display', 'none');

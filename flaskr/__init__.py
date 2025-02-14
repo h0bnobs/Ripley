@@ -13,7 +13,7 @@ Modules:
 import json, os, time, re, ipaddress
 from flask import Flask, render_template, request, redirect, url_for, session, Response
 from flaskr.db import get_db, init_db
-from flaskr.run_tool_for_gui import run_on_multiple_targets, run_on_single_target
+from run_tool_for_gui import run_on_multiple_targets, run_on_single_target
 from scripts.utils import parse_config_file, robots_string
 
 
@@ -92,7 +92,11 @@ def create_app(test_config=None) -> Flask:
         The route for the port scanning settings page.
         :return: The render template of the port scanning settings html file.
         """
-        return render_template('host_discovery_settings.html')
+        db = get_db()
+        c = db.execute("SELECT * FROM config").fetchall()
+        config = [dict(entry) for entry in c][0]
+        session['config'] = config
+        return render_template('host_discovery_settings.html', config=config)
 
     @app.route('/advanced-settings', methods=['GET'])
     def advanced_settings() -> str:
@@ -322,6 +326,10 @@ def create_app(test_config=None) -> Flask:
                 if '\r\n' in values['ports_to_scan']:
                     values['ports_to_scan'] = values['ports_to_scan'].replace('\r\n', ', ')
 
+            if 'host_timeout' in values:
+                if '\r\n' in values['host_timeout']:
+                    values['host_timeout'] = values['host_timeout'].replace('\r\n', ', ')
+
             old_config = session['config']  # old config from when save was pressed
 
             # aggressive_scan is either True or nothing when its coming in here from the form.
@@ -336,7 +344,7 @@ def create_app(test_config=None) -> Flask:
                 old_config['os_detection'] = 'False'
 
             for value in values:  # update the old config with the new values
-                if value != 'aggressive_scan':
+                if value != 'aggressive_scan' or value != 'os_detection':
                     old_config[value] = values[value]
 
             # update the config table
@@ -352,6 +360,37 @@ def create_app(test_config=None) -> Flask:
             session['config'] = config
             session['ports_to_scan'] = config["ports_to_scan"]
             return redirect(url_for('port_scanning_settings'))
+
+        #if the request is coming from /host-discovery-settings:
+        elif referer and 'host-discovery-settings' in referer:
+            values = request.form.to_dict()  # form data
+
+            old_config = session['config']  # old config from when save was pressed
+
+            if 'ping_method' not in values:
+                old_config['ping_method'] = ''
+
+            if 'ping_hosts' in values: # if ping_hosts is in the form data then its true
+                old_config['ping_hosts'] = 'True'
+                if 'ping_method' in values:
+                    old_config['ping_method'] = values['ping_method']
+            elif 'ping_hosts' not in values: #if ping_hosts is not in the form data then its false and ping_methods is empty
+                old_config['ping_hosts'] = 'False'
+                old_config['ping_method'] = ''
+
+
+            # update the config table
+            update_config_table(old_config)
+
+            # now we update config.json in the directory root
+            update_config_json_file()
+
+            # get the relevant data for the port scanning page and set the session variables
+            db = get_db()
+            c = db.execute("SELECT * FROM config").fetchall()
+            config = [dict(entry) for entry in c][0]
+            session['config'] = config
+            return redirect(url_for('host_discovery_settings'))
 
         else:
             return error("Something went wrong trying to update the config. Please try again!",
@@ -418,7 +457,9 @@ def create_app(test_config=None) -> Flask:
             session['scan_results_files'] = results_files  # stores list of file paths in session
             return redirect(url_for('multiple_results'))
         else:  # single target
+            start = time.time()
             result_file = run_on_single_target(full_target_list, config)
+            print(f'########### {time.time() - start} seconds ###########')
             session['scan_result_file'] = result_file
             return redirect(url_for('single_result'))
 
@@ -529,8 +570,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
             INSERT INTO config (
                 targets, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file, 
                 ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
-                scan_type, aggressive_scan, scan_speed, os_detection
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 config.get('targets', ''),
@@ -545,7 +586,10 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                 config.get('scan_type', ''),
                 config.get('aggressive_scan', ''),
                 config.get('scan_speed', ''),
-                config.get('os_detection', '')
+                config.get('os_detection', ''),
+                config.get('ping_hosts', ''),
+                config.get('ping_method', ''),
+                config.get('host_timeout', '')
             )
         )
         db.commit()
@@ -633,7 +677,10 @@ def update_config_json_file():
             scan_type,
             aggressive_scan,
             scan_speed,
-            os_detection
+            os_detection,
+            ping_hosts,
+            ping_method,
+            host_timeout
         FROM config
         """
     )
@@ -655,7 +702,10 @@ def update_config_json_file():
             "scan_type": row["scan_type"],
             "aggressive_scan": row["aggressive_scan"],
             "scan_speed": row["scan_speed"],
-            "os_detection": row["os_detection"]
+            "os_detection": row["os_detection"],
+            "ping_hosts": row["ping_hosts"],
+            "ping_method": row["ping_method"],
+            "host_timeout": row["host_timeout"]
         })
         with open(config_data["config_filepath"], 'w') as file:
             json.dump(config_data, file, indent=4)
@@ -682,7 +732,10 @@ def update_config_table(config):
                 scan_type = ?,
                 aggressive_scan = ?,
                 scan_speed = ?,
-                os_detection = ?
+                os_detection = ?,
+                ping_hosts = ?,
+                ping_method = ?,
+                host_timeout = ?
             """,
             (
                 config.get('targets', ''),
@@ -697,7 +750,10 @@ def update_config_table(config):
                 config.get('scan_type', ''),
                 config.get('aggressive_scan', ''),
                 config.get('scan_speed', ''),
-                config.get('os_detection', '')
+                config.get('os_detection', ''),
+                config.get('ping_hosts', ''),
+                config.get('ping_method', ''),
+                config.get('host_timeout', '')
             )
         )
         db.commit()

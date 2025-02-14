@@ -41,7 +41,7 @@
 ### Tuesday 22nd October
 22/10/24 03:00pm
 - More work on the GUI. [Screenshot](screenshots/22-10-24.png)
-- Most changes were in [run_tool_for_gui.py](../flaskr/run_tool_for_gui.py), [run_commands.py](../scripts/run_commands.py), [ripley_cli.py](../ripley_cli.py) and the [index](../flaskr/templates/general_settings.html).
+- Most changes were in [run_tool_for_gui.py](../run_tool_for_gui.py), [run_commands.py](../scripts/run_commands.py), [ripley_cli.py](../ripley_cli.py) and the [index](../flaskr/templates/general_settings.html).
 - Added the following tools/checks:
   - Get the contents of robots.txt file.
   - Use the dnsrecon tool to get subdomains.
@@ -54,7 +54,7 @@
 - More work on the GUI. [Screenshot 1](screenshots/24-10-24_01.png) & [Screenshot 2](screenshots/24-10-24_02.png)
   - Added collapsible report elements so that it's a bit more organised.
   - Added [multiple_targets_result.html](../flaskr/templates/multiple_targets_result.html) & [single_target_result.html](../flaskr/templates/single_target_result.html) for organised results per the scan.
-  - Had to rework [the init file](../flaskr/__init__.py) & [run_tool_for_gui](../flaskr/run_tool_for_gui.py) so that the scan results are handled and displayed correctly!
+  - Had to rework [the init file](../flaskr/__init__.py) & [run_tool_for_gui](../run_tool_for_gui.py) so that the scan results are handled and displayed correctly!
 
 ### Thursday 7th November
 07/11/24 11:20am
@@ -65,7 +65,7 @@
 ### Sunday 10th November
 10/11/24 01:40pm
 - Currently, for a scan against 5 targets, it costs $0.40 for a call to gpt4.0, so I have switched to 3.5 for testing.
-- Added Concurrency in [the multiple targets gui script](../flaskr/run_tool_for_gui.py).
+- Added Concurrency in [the multiple targets gui script](../run_tool_for_gui.py).
   - I ran some tests so before when scanning 2 targets it took 82 seconds, and now it takes 43.
   - For a scan against 5 targets it took 172 seconds and now takes 43 seconds.
 - Added some [logic](../flaskr/static/js/index.js) for the [homepage](../flaskr/templates/general_settings.html) so that if the user is using a targets file, some of the contents are displayed and they can also view their entire targets file in the browser.
@@ -76,7 +76,7 @@
 ### Sunday 17th November
 17/11/24 05:20pm
 - Added `ffuf` subdomain enumeration.
-- Rewrote the cli version to incorporate all the new changes added to [run_tool_for_gui.py](../flaskr/run_tool_for_gui.py).
+- Rewrote the cli version to incorporate all the new changes added to [run_tool_for_gui.py](../run_tool_for_gui.py).
 - Added some extra helper methods to [utils.py](../scripts/utils.py).
 - Reworded the AI prompt.
 
@@ -154,3 +154,9 @@
 - Added `scan_type`, `aggressive_scan`, `scan_speed` and `os_detection` to the config and the `port_scanning_settings` page.
 - Changed the `update_config` logic.
 - Added `default_config.json` and fixed `chatgpt_call.py`.
+
+### Friday 14th February
+14/02/25 01:40pm
+- Refactored `ripley_clip.py`, `run_tool_for_gui.py` and added `scanner_tools.py`.
+- added `host_timeout`, `ping_hosts` and `ping_method` as options.
+- ``

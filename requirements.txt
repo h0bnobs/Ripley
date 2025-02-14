@@ -9,3 +9,5 @@ python-libnmap
 click
 Flask
 openai
+pymetasploit3
+aiohttp
