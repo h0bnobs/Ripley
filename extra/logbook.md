@@ -159,4 +159,10 @@
 14/02/25 01:40pm
 - Refactored `ripley_clip.py`, `run_tool_for_gui.py` and added `scanner_tools.py`.
 - added `host_timeout`, `ping_hosts` and `ping_method` as options.
-- ``
+
+### Tuesday 25th February
+25/02/25 10:30am
+- Added `ai insights` and `ffuf` options to `advanced_settings`.
+- Added wordlist uploads for `ffuf`
+- Added `add_commands` page to the left hand nav bar.
+- Added `select_commands_file` for when there is no commands file in the config.

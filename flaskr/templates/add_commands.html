@@ -9,39 +9,54 @@
         }
     </style>
     <link rel="stylesheet" href="../static/style/basic_style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../static/js/index.js"></script>
 </head>
 <body>
-<button onclick="window.location.href='/'">Homepage</button>
-<h3>Commands file: <span style="color: #FFA400">{{ commands_file }}</span></h3>
-<h4>Type <span style="color: #FFA400">"{target}"</span> anywhere in the input to visualise the command!</h4>
-<h4>Some examples are: "sslscan {target}:443" Or "curl -L https://{target}/"!</h4>
-<h4></h4>
-<form action="/add-commands" method="POST">
-    <input type="text" id="command-input" name="command" style="width: 30%; margin-top: 10px;">
-    <button type="submit">Submit</button>
-</form>
-<h4 id="command-display" style="color: red"></h4>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-    $(document).ready(function() {
-        $('#command-input').on('input', function() {
-            var inputText = $(this).val();
-            var targetValue = '{{ config[0]["targets"].split(",")[0].strip() }}';
-            var updatedText = inputText.replace('{target}', targetValue);
-            $('#command-display').html('The command will be run exactly as:<br>' + updatedText);
+<div class="vertical-bar">
+    <a href="general-settings">General</a>
+    <a href="port-scanning-settings">Port Scanning</a>
+    <a href="host-discovery-settings">Host Discovery</a>
+    <a href="advanced-settings">Advanced Settings</a>
+    <a href="add-commands" class="active">Add Commands</a>
+</div>
+<div class="content">
+    <button onclick="window.location.href='/'">Homepage</button>
+    <h3>Commands file: <span style="color: #FFA400">{{ commands_file }}</span></h3>
+    <button onclick="window.location.href='/select-commands-file'">Select a different commands file</button>
+    <h4>Type <span style="color: #FFA400">"{target}"</span> anywhere in the input to visualise the command!</h4>
+    <h4>Some examples are: "sslscan {target}:443" Or "curl -L https://{target}/"!</h4>
+    <h4></h4>
+    <form action="/add-commands" method="POST">
+        <input type="text" id="command-input" name="command" style="width: 30%; margin-top: 10px;">
+        <button type="submit">Submit</button>
+    </form>
+    <h4 id="command-display" style="color: red"></h4>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $('#command-input').on('input', function () {
+                var inputText = $(this).val();
+                var targetValue = '{{ config[0]["targets"].split(",")[0].strip() }}';
+                var updatedText = inputText.replace('{target}', targetValue);
+                $('#command-display').html('The command will be run exactly as:<br>' + updatedText);
+            });
         });
-    });
-</script>
+    </script>
 
-{% if extra_commands %}
+    {% if extra_commands %}
     <h4>Extra command(s) to be run:</h4>
     <div id="commands-display">
         <form action="/remove-extra-command" method="POST">
             {% for command in extra_commands %}
-                <p>{{ command }}
-                    <button type="submit" name="command" value="{{ command }}" style="color: white; background-color: red;">Remove</button>
-                    <button type="button" class="edit-command" data-command="{{ command }}" data-line-number="{{ loop.index0 }}" style="color: white; background-color: #FFA400;">Edit</button>
-                </p>
+            <p>{{ command }}
+                <button type="submit" name="command" value="{{ command }}" style="color: white; background-color: red;">
+                    Remove
+                </button>
+                <button type="button" class="edit-command" data-command="{{ command }}"
+                        data-line-number="{{ loop.index0 }}" style="color: white; background-color: #FFA400;">Edit
+                </button>
+            </p>
             {% endfor %}
         </form>
     </div>
@@ -54,18 +69,19 @@
             <button type="submit">Save Changes</button>
         </form>
     </div>
-{% endif %}
-<script>
-    $(document).ready(function() {
-        $('.edit-command').click(function() {
-            var command = $(this).data('command');
-            var lineNumber = $(this).data('line-number');
-            $('#original-command').val(command);
-            $('#line-number').val(lineNumber);
-            $('#edit-command-input').val(command);
-            $('#edit-command-form').show();
+    {% endif %}
+    <script>
+        $(document).ready(function () {
+            $('.edit-command').click(function () {
+                var command = $(this).data('command');
+                var lineNumber = $(this).data('line-number');
+                $('#original-command').val(command);
+                $('#line-number').val(lineNumber);
+                $('#edit-command-input').val(command);
+                $('#edit-command-form').show();
+            });
         });
-    });
-</script>
+    </script>
+</div>
 </body>
 </html>

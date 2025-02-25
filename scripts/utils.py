@@ -110,12 +110,13 @@ def parse_config_file(filepath: str) -> dict:
     return config
 
 
-def remove_ansi_escape_codes(text: str) -> str:
+def remove_ansi_escape_codes(text) -> str:
     """
     Removes the ANSI escape codes from a string for nice outputs.
     :param text: The text to remove ANSI from.
     :return: The result string with no ANSI
     """
+    print(text)
     ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
     return ansi_escape.sub('', text)
 

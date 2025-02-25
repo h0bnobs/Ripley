@@ -1,13 +1,16 @@
 import json
 import os
+import subprocess
 import tempfile
+import time
+from subprocess import CompletedProcess
 from typing import List, Dict
 import concurrent.futures
 from flask import current_app
 from flaskr import get_db
 from scripts.utils import COLOURS, remove_ansi_escape_codes, remove_leading_newline, is_wordpress_site
 from scripts.chatgpt_call import make_chatgpt_api_call
-from scripts.run_commands import run_command_no_output, run_command_with_output_after
+from scripts.run_commands import run_command_no_output, run_command_with_output_after, run_command_with_input
 from scanner_tools import (
     run_host, run_nmap, run_smbclient, run_ftp, get_screenshot,
     get_robots_file, run_dns_recon, run_ffuf_subdomain, is_target_webpage,
@@ -22,6 +25,24 @@ def save_scan_results_to_tempfile(results: Dict) -> str:
         json.dump(results, f)
     return temp_file.name
 
+def start_msf_rpc(msf_password: str):
+    print("[*] Starting Metasploit RPC Server...")
+    # msfrpcd -P yourpassword -p 55553 -S
+    process = subprocess.Popen(['msfrpcd', '-P', msf_password, '-p', '55553', '-S'])
+    time.sleep(4)
+    return process
+
+def check_and_kill_msf_rpc():
+    print("[*] Checking for existing Metasploit RPC Server...")
+    result = subprocess.run(
+        "ps aux | grep msfrpcd",
+        shell=True,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    t = result.stdout.split('\n')
+    subprocess.run('kill ' + t[0].split()[1], shell=True)
 
 def process_extra_commands(target: str, commands_file: str) -> List[str]:
     if not commands_file:
@@ -45,51 +66,75 @@ def process_extra_commands(target: str, commands_file: str) -> List[str]:
         return []
 
 
-def run_scans(target: str, config: Dict) -> Dict:
+def run_scans(target: str, config: Dict, pid: int) -> Dict:
     nmap_settings = {k: config[k] for k in
                      ["ports_to_scan", "scan_type", "aggressive_scan", "scan_speed", "os_detection", "ping_hosts", "ping_method", "host_timeout"]}
 
+    #run_command_with_input('smbclient -L 10.129.32.234', '\n')
+
     results = {
         'target': target,
-        'host_output': run_host(target),
         'nmap_output': run_nmap(target, nmap_settings),
-        'smbclient_output': remove_ansi_escape_codes(run_smbclient(target)),
-        'ftp_result': 'Anonymous FTP allowed!' if run_ftp(target) else 'Anonymous FTP login not allowed!',
-        'dns_recon_output': run_dns_recon(target),
-        'metasploit_output': '\n'.join(' '.join(module.values()) for module in
-                                       get_metasploit_modules(target)) or "No relevant metasploit modules found"
     }
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_key = {
+            executor.submit(run_host, target): 'host_output',
+            executor.submit(run_smbclient, target): 'smbclient_output',
+            executor.submit(run_ftp, target): 'ftp_result',
+            executor.submit(run_dns_recon, target): 'dns_recon_output',
+            executor.submit(get_metasploit_modules, target, pid): 'metasploit_output'
+        }
+
+        for future in concurrent.futures.as_completed(future_to_key):
+            key = future_to_key[future]
+            try:
+                results[key] = future.result()
+                if key == 'ftp_result':
+                    results[key] = 'Anonymous FTP allowed!' if results[key] else 'Anonymous FTP login not allowed!'
+                elif key == 'metasploit_output':
+                    results[key] = '\n'.join(' '.join(module.values()) for module in results[key]) or "No relevant metasploit modules found"
+            except Exception as e:
+                results[key] = f"Error: {e}"
+
     is_webpage = is_target_webpage(target)
     if is_webpage:
-        with concurrent.futures.ThreadPoolExecutor() as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
             webpage_tasks = {
                 'ffuf_webpage': executor.submit(run_ffuf_webpage, target, config["ffuf_webpage_wordlist"],
-                                                config["ffuf_delay"]),
+                                                config["enable_ffuf"], config["ffuf_delay"]),
                 'robots': executor.submit(get_robots_file, target),
                 'ffuf_subdomain': executor.submit(run_ffuf_subdomain,
                                                   target[4:] if target.startswith('www.') else target,
                                                   config["ffuf_subdomain_wordlist"],
-                                                  config["ffuf_delay"]
+                                                  config["enable_ffuf"], config["ffuf_delay"]
                                                   ),
                 'screenshot': executor.submit(get_screenshot, target),
                 'wpscan': executor.submit(run_wpscan, target) if is_wordpress_site(target) else None
             }
 
-            results.update({
-                'webpages_found': remove_ansi_escape_codes(webpage_tasks['ffuf_webpage'].result()),
-                'robots_file': webpage_tasks['robots'].result().stdout,
-                'subdomain_enumeration': remove_ansi_escape_codes(webpage_tasks['ffuf_subdomain'].result()),
-                'wpscan_output': remove_ansi_escape_codes(webpage_tasks['wpscan'].result()) if webpage_tasks[
-                    'wpscan'] else "Not a WordPress site"
-            })
+            for key, future in webpage_tasks.items():
+                if future:
+                    try:
+                        results[key] = future.result()
+                        if key in ['ffuf_webpage', 'ffuf_subdomain', 'wpscan']:
+                            results[key] = remove_ansi_escape_codes(results[key])
+                        if key == 'screenshot':
+                            if results[key]:
+                                os.makedirs('flaskr/static/screenshots', exist_ok=True)
+                                run_command_no_output(f'cp {results[key]} flaskr/static/screenshots/{target}.png')
+                                results[key] = f'static/screenshots/{target}.png'
+                            else:
+                                results[key] = "[*] Couldn't get a screenshot of the target!"
+                    except Exception as e:
+                        results[key] = f"Error: {e}"
 
-            screenshot = webpage_tasks['screenshot'].result()
-            if screenshot:
-                os.makedirs('flaskr/static/screenshots', exist_ok=True)
-                run_command_no_output(f'cp {screenshot} flaskr/static/screenshots/{target}.png')
-                results['screenshot'] = f'static/screenshots/{target}.png'
-            else:
-                results['screenshot'] = "[*] Couldn't get a screenshot of the target!"
+            results.update({
+                'webpages_found': results.get('ffuf_webpage', 'Target is not a webpage!'),
+                'robots_file': results.get('robots', 'Target is not a webpage!'),
+                'subdomain_enumeration': results.get('ffuf_subdomain', 'Target is not a webpage!'),
+                'wpscan_output': results.get('wpscan', 'Not a WordPress site')
+            })
     else:
         results.update({
             'webpages_found': 'Target is not a webpage!',
@@ -143,10 +188,18 @@ def save_to_db(db, results: Dict, extra_commands: List[str] = None) -> None:
 def run_on_multiple_targets(target_list: List[str], config: Dict) -> List[str]:
     app = current_app._get_current_object()
 
+    check_and_kill_msf_rpc()
+    msf_process = start_msf_rpc('msf')
+    pid = msf_process.pid
+
     def process_target(target: str) -> str:
         with app.app_context():
-            results = run_scans(target, config)
+            results = run_scans(target, config, pid)
+            results = {k: (v.stdout if isinstance(v, CompletedProcess) else v) for k, v in results.items()}
             save_to_db(get_db(), results)
+
+            #from pprint import pprint
+            #pprint({k: (v, type(v)) for k, v in results.items() if not isinstance(v, str)})
             return save_scan_results_to_tempfile(results)
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -155,7 +208,14 @@ def run_on_multiple_targets(target_list: List[str], config: Dict) -> List[str]:
 
 def run_on_single_target(target_list: List[str], config: Dict) -> str:
     target = target_list[0]
-    results = run_scans(target, config)
+
+    check_and_kill_msf_rpc()
+    msf_process = start_msf_rpc('msf')
+    pid = msf_process.pid
+
+    results = run_scans(target, config, pid)
+    results['smbclient_output'] = remove_ansi_escape_codes(results['smbclient_output'])
+    results = {k: (v.stdout if isinstance(v, CompletedProcess) else v) for k, v in results.items()}
     save_to_db(get_db(), results)
     run_command_no_output(f'rm flaskr/static/temp/nmap-{target}.xml')
     return save_scan_results_to_tempfile(results)

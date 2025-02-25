@@ -104,7 +104,58 @@ def create_app(test_config=None) -> Flask:
         The route for the port scanning settings page.
         :return: The render template of the port scanning settings html file.
         """
-        return render_template('advanced_settings.html')
+        db = get_db()
+        c = db.execute("SELECT * FROM config").fetchall()
+        config = [dict(entry) for entry in c][0]
+        session['config'] = config
+        return render_template('advanced_settings.html', config=config)
+
+    @app.route('/upload-subdomain-wordlist', methods=['POST'])
+    def upload_subdomain_wordlist() -> Response | str:
+        file = request.files['file']
+        old_config = session['config']
+        if file:
+            old_config['ffuf_subdomain_wordlist'] = file.filename
+
+            # update the config table
+            update_config_table(old_config)
+
+            # now we update config.json in the directory root
+            update_config_json_file()
+
+            # get the relevant data for the port scanning page and set the session variables
+            db = get_db()
+            c = db.execute("SELECT * FROM config").fetchall()
+            config = [dict(entry) for entry in c][0]
+            session['config'] = config
+            return redirect(url_for('advanced_settings'))
+        else:
+            return error("Something went wrong trying to update the config. Please try again!",
+                         url_for('advanced_settings'))
+
+
+    @app.route('/upload-webpage-wordlist', methods=['POST'])
+    def upload_webpage_wordlist() -> Response | str:
+        file = request.files['file']
+        old_config = session['config']
+        if file:
+            old_config['ffuf_webpage_wordlist'] = file.filename
+
+            # update the config table
+            update_config_table(old_config)
+
+            # now we update config.json in the directory root
+            update_config_json_file()
+
+            # get the relevant data for the port scanning page and set the session variables
+            db = get_db()
+            c = db.execute("SELECT * FROM config").fetchall()
+            config = [dict(entry) for entry in c][0]
+            session['config'] = config
+            return redirect(url_for('advanced_settings'))
+        else:
+            return error("Something went wrong trying to update the config. Please try again!",
+                         url_for('advanced_settings'))
 
     @app.route('/upload-targets-file', methods=['POST'])
     def upload_targets_file() -> Response | str:
@@ -251,9 +302,42 @@ def create_app(test_config=None) -> Flask:
                 return render_template('add_commands.html', config=config, extra_commands=extra_commands,
                                        commands_file=extra_commands_filename)
         except FileNotFoundError:
-            return error(
-                f"No extra commands file found in {config[0]['config_filepath']}. Please review your config and try again!",
-                url_for('general_settings'))
+            return redirect(url_for('select_commands_file'))
+
+
+    @app.route('/select-commands-file', methods=['GET'])
+    def select_commands_file() -> str:
+        """
+        The route for selecting a commands file if no current commands file is found.
+        :return: The render template of the select commands file html file.
+        """
+        files_in_dir = sorted(
+            [os.path.join(os.getcwd(), file) for file in os.listdir(os.getcwd()) if file.endswith('.txt')],
+            key=lambda x: (not x.endswith('.txt'))
+        )
+        return render_template('select_commands_file.html', files_in_directory=files_in_dir)
+
+
+    @app.route('/set-commands-file', methods=['POST'])
+    def set_commands_file() -> Response:
+        """
+        This route sets the selected commands file as the current commands file.
+        :return: The redirect to the add commands page.
+        """
+        selected_commands_file = request.form['commands_file']
+
+        old_config = session['config'][0]
+        old_config['extra_commands_file'] = selected_commands_file
+
+        update_config_table(old_config)
+
+        update_config_json_file()
+
+        data = reload_homepage()
+        session['config'] = data["config"]
+        session['extra_commands'] = data["extra_commands"]
+
+        return redirect(url_for('view_add_commands'))
 
     @app.route('/edit-command', methods=['POST'])
     def edit_command():
@@ -378,7 +462,6 @@ def create_app(test_config=None) -> Flask:
                 old_config['ping_hosts'] = 'False'
                 old_config['ping_method'] = ''
 
-
             # update the config table
             update_config_table(old_config)
 
@@ -391,6 +474,38 @@ def create_app(test_config=None) -> Flask:
             config = [dict(entry) for entry in c][0]
             session['config'] = config
             return redirect(url_for('host_discovery_settings'))
+
+        #if the request is coming from /advanced-settings:
+        elif referer and 'advanced-settings' in referer:
+            values = request.form.to_dict()
+            old_config = session['config']  # old config from when save was pressed
+
+            if 'chatgpt_api_call' in values: #either 'True' or not in
+                old_config['disable_chatgpt_api'] = 'false'
+            elif 'chatgpt_api_call' not in values:
+                old_config['disable_chatgpt_api'] = 'true'
+
+            if 'enable_ffuf' in values:
+                old_config['enable_ffuf'] = 'True'
+
+
+            else:
+                old_config['enable_ffuf'] = 'False'
+
+                #if 'ffuf_subdomain_wordlist' in values:
+
+            # update the config table
+            update_config_table(old_config)
+
+            # now we update config.json in the directory root
+            update_config_json_file()
+
+            # get the relevant data for the port scanning page and set the session variables
+            db = get_db()
+            c = db.execute("SELECT * FROM config").fetchall()
+            config = [dict(entry) for entry in c][0]
+            session['config'] = config
+            return redirect(url_for('advanced_settings'))
 
         else:
             return error("Something went wrong trying to update the config. Please try again!",
@@ -570,8 +685,9 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
             INSERT INTO config (
                 targets, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file, 
                 ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
-                scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout,
+                enable_ffuf
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 config.get('targets', ''),
@@ -589,7 +705,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                 config.get('os_detection', ''),
                 config.get('ping_hosts', ''),
                 config.get('ping_method', ''),
-                config.get('host_timeout', '')
+                config.get('host_timeout', ''),
+                config.get('enable_ffuf', '')
             )
         )
         db.commit()
@@ -680,7 +797,8 @@ def update_config_json_file():
             os_detection,
             ping_hosts,
             ping_method,
-            host_timeout
+            host_timeout,
+            enable_ffuf
         FROM config
         """
     )
@@ -705,7 +823,8 @@ def update_config_json_file():
             "os_detection": row["os_detection"],
             "ping_hosts": row["ping_hosts"],
             "ping_method": row["ping_method"],
-            "host_timeout": row["host_timeout"]
+            "host_timeout": row["host_timeout"],
+            "enable_ffuf": row["enable_ffuf"]
         })
         with open(config_data["config_filepath"], 'w') as file:
             json.dump(config_data, file, indent=4)
@@ -735,7 +854,8 @@ def update_config_table(config):
                 os_detection = ?,
                 ping_hosts = ?,
                 ping_method = ?,
-                host_timeout = ?
+                host_timeout = ?,
+                enable_ffuf = ?
             """,
             (
                 config.get('targets', ''),
@@ -753,7 +873,8 @@ def update_config_table(config):
                 config.get('os_detection', ''),
                 config.get('ping_hosts', ''),
                 config.get('ping_method', ''),
-                config.get('host_timeout', '')
+                config.get('host_timeout', ''),
+                config.get('enable_ffuf', '')
             )
         )
         db.commit()

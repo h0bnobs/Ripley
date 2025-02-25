@@ -8,7 +8,7 @@ from libnmap.parser import NmapParser
 from pymetasploit3.msfrpc import MsfRpcClient
 
 from scripts.run_commands import run_command_with_output_after, run_command_live_output, \
-    run_command_live_output_with_input
+    run_command_live_output_with_input, run_command_with_input
 from scripts.utils import COLOURS, find_full_filepath, parse_nmap_xml
 from subprocess import CompletedProcess, CalledProcessError
 from typing import List, Dict, Type
@@ -33,17 +33,10 @@ def run_wpscan(target: str) -> str:
         return f"Wpscan failed!"
 
 
-def get_metasploit_modules(target: str) -> list[dict[str, str]]:
+def get_metasploit_modules(target: str, pid: int) -> list[dict[str, str]]:
 
     output_filepath = f'flaskr/static/temp/nmap-{target}.xml'
     msf_password = 'msf'
-
-    def start_msf_rpc():
-        print("[*] Starting Metasploit RPC Server...")
-        # msfrpcd -P yourpassword -p 55553 -S
-        process = subprocess.Popen(['msfrpcd', '-P', msf_password, '-p', '55553', '-S'])
-        time.sleep(4)
-        return process
 
     def connect_to_msf():
         print("[*] Connecting to Metasploit RPC Server...")
@@ -58,37 +51,13 @@ def get_metasploit_modules(target: str) -> list[dict[str, str]]:
         print("[*] Stopping Metasploit RPC Server...")
         subprocess.Popen(['kill', str(process)])
 
-    def check_and_kill_msf_rpc():
-        print("[*] Checking for existing Metasploit RPC Server...")
-        result = subprocess.run(
-            "ps aux | grep msfrpcd",
-            shell=True,
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-        t = result.stdout.split('\n')
-        subprocess.run('kill ' + t[0].split()[1], shell=True)
-
     def search_for_modules(client, product, version) -> list[dict[str, str]]:
         search_results = client.modules.search(product)
-        #return [x for x in search_results if [y for y in x.values() if isinstance(y, str) and version in y]]
         return [result for result in search_results if any(isinstance(value, str) and version in value for value in result.values())]
-        # list = []
-        # for result in search_results:
-        #     for key, value in result.items():
-        #         if isinstance(value, str) and version in value:
-        #             list.append(result)
-        # if len(list) == 0:
-        #     return []
-        # else:
-        #     for i in list:
-        #         print(f"#### {i}")
-        #     return list
 
-    check_and_kill_msf_rpc()
-    msf_process = start_msf_rpc()
-    pid = msf_process.pid
+    #check_and_kill_msf_rpc()
+    #msf_process = start_msf_rpc()
+    #pid = msf_process.pid
     try:
         client = connect_to_msf()
         report = NmapParser.parse_fromfile(output_filepath)
@@ -126,6 +95,7 @@ def is_target_webpage(target: str) -> bool:
     :param target: The target to check.
     :return: True if the target has one of the mentioned ports open, False otherwise.
     """
+    print(target)
     open_ports = parse_nmap_xml(f'flaskr/static/temp/nmap-{target}.xml', [80, 443, 8080, 8443])
     #return open_ports in ['80', '443', '8080', '8443']
     return any(port in open_ports for port in ['80', '443', '8080', '8443'])
@@ -178,14 +148,10 @@ def run_smbclient(target: str) -> None | str:
     try:
         print(f'{COLOURS["warn"]} Smbclient will now attempt to list shares. {COLOURS["end"]}')
         # result = run_command_with_output_after(command)
-        result = run_command_live_output_with_input(command, '\n')
-        if result is not None:
-            if result.returncode == 1:
-                return result.stderr
-            else:
-                return str(result.stdout)
-        else:
-            return f'{COLOURS["warn"]} smbclient failed to list shares. {COLOURS["end"]}'
+        result = run_command_with_input(command, '\n')
+        if result == '':
+            result = "No smb shares found!"
+        return result
     except subprocess.CalledProcessError as e:
         error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
         return error_message
@@ -373,103 +339,113 @@ def parse_nmap_settings(settings: dict, target: str) -> str:
     return command
 
 
-def run_ffuf_subdomain(target: str, wordlist_filepath: str, delay=0) -> str:
+def run_ffuf_subdomain(target: str, wordlist_filepath: str, enable_ffuf: str, delay=0) -> str:
     """
     Runs ffuf to find subdomains. WARNING: remember to remove 'www.' from the target before running this function.
-    :param wordlist_filepath: The path to the wordlist file.
-    :param delay: An optional delay to add between requests.
     :param target: The target to run ffuf on.
+    :param wordlist_filepath: The path to the wordlist file.
+    :param enable_ffuf: A string that is either 'True' or 'False' to enable or disable ffuf.
+    :param delay: An optional delay to add between requests.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
-    print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
-    # https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt
-    # command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt -p {delay}'
-    if not wordlist_filepath:
-        # check if wordlist exists already in proj root
-        for file in os.listdir():
-            if file == 'dnspod-top2000-sub-domains.txt':
-                wordlist_filepath = 'dnspod-top2000-sub-domains.txt'
-                break
+    if enable_ffuf == 'True':
+        print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
+        # https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt
+        # command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt -p {delay}'
+        if not wordlist_filepath:
+            # check if wordlist exists already in proj root
+            for file in os.listdir():
+                if file == 'dnspod-top2000-sub-domains.txt':
+                    wordlist_filepath = 'dnspod-top2000-sub-domains.txt'
+                    break
+            else:
+                # get suitable wordlist from git if not found
+                url = 'https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt'
+                t = run_command_with_output_after(f'curl -o dnspod-top2000-sub-domains.txt {url}')
+                if t.returncode == 0:
+                    wordlist_filepath = 'dnspod-top2000-sub-domains.txt'
+
+        if delay != 0:
+            command = (
+                f'ffuf -w {wordlist_filepath} '
+                f'-u https://FUZZ.{target} '
+                f'-H "Host: FUZZ.{target}" '
+                f'-o output/ffuf_subdomain_enumeration_{target}.txt '
+                f'-p {delay}'
+            )
         else:
-            # get suitable wordlist from git if not found
-            url = 'https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt'
-            t = run_command_with_output_after(f'curl -o dnspod-top2000-sub-domains.txt {url}')
-            if t.returncode == 0:
-                wordlist_filepath = 'dnspod-top2000-sub-domains.txt'
-
-    if delay != 0:
-        command = (
-            f'ffuf -w {wordlist_filepath} '
-            f'-u https://FUZZ.{target} '
-            f'-H "Host: FUZZ.{target}" '
-            f'-o output/ffuf_subdomain_enumeration_{target}.txt '
-            f'-p {delay}'
-        )
+            command = (
+                f'ffuf -w {wordlist_filepath} '
+                f'-u https://FUZZ.{target} '
+                f'-H "Host: FUZZ.{target}" '
+                f'-o output/ffuf_subdomain_enumeration_{target}.txt'
+            )
+        print(f"using {wordlist_filepath}")
+        result = run_command_live_output(command)
+        #print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
+        return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
     else:
-        command = (
-            f'ffuf -w {wordlist_filepath} '
-            f'-u https://FUZZ.{target} '
-            f'-H "Host: FUZZ.{target}" '
-            f'-o output/ffuf_subdomain_enumeration_{target}.txt'
-        )
-    print(f"using {wordlist_filepath}")
-    result = run_command_live_output(command)
-    print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
-    return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
+        return "ffuf not enabled!"
 
 
-def run_ffuf_webpage(target: str, wordlist_filepath: str, delay = 0) -> str:
+def run_ffuf_webpage(target: str, wordlist_filepath: str, enable_ffuf: str, delay = 0) -> str:
     """
     Runs ffuf to find webpages.
-    :param wordlist_filepath: The path to the wordlist file.
-    :param delay: An optional delay to add between requests.
     :param target: The target to run ffuf on.
+    :param wordlist_filepath: The path to the wordlist file.
+    :param enable_ffuf: A string that is either 'True' or 'False' to enable or disable ffuf.
+    :param delay: An optional delay to add between requests.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
-    print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
+    print('############# IN FFUF WEBPAGE METHOD #############')
+    if enable_ffuf == 'True':
+        print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
 
-    if not wordlist_filepath:
-        # check if wordlist exists already in proj root
-        for file in os.listdir():
-            if file == 'Directories_Common.wordlist':
-                wordlist_filepath = 'Directories_Common.wordlist'
-                break
+        if not wordlist_filepath:
+            # check if wordlist exists already in proj root
+            for file in os.listdir():
+                if file == 'Directories_Common.wordlist':
+                    wordlist_filepath = 'Directories_Common.wordlist'
+                    break
+            else:
+                # get suitable wordlist from git if not found
+                url = 'https://raw.githubusercontent.com/emadshanab/WordLists-20111129/master/Directories_Common.wordlist'
+                t = run_command_with_output_after(f'curl -o Directories_Common.wordlist {url}')
+                if t.returncode == 0:
+                    wordlist_filepath = 'Directories_Common.wordlist'
+
+        if delay != 0:
+            command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500 -p {delay}'
         else:
-            # get suitable wordlist from git if not found
-            url = 'https://raw.githubusercontent.com/emadshanab/WordLists-20111129/master/Directories_Common.wordlist'
-            t = run_command_with_output_after(f'curl -o Directories_Common.wordlist {url}')
-            if t.returncode == 0:
-                wordlist_filepath = 'Directories_Common.wordlist'
+            command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500'
 
-    if delay != 0:
-        command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500 -p {delay}'
+        print(f"using {wordlist_filepath}")
+        result = run_command_live_output(command)
+        print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
+        return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
     else:
-        command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500'
-
-    print(f"using {wordlist_filepath}")
-    result = run_command_live_output(command)
-    print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
-    return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
+        return "ffuf not enabled!"
 
 
-def get_robots_file(target: str) -> CompletedProcess[str] | CalledProcessError | Type[CompletedProcess]:
+def get_robots_file(target: str) -> str:
     """
     Gets the robots.txt file from the target website.
     :param target: The target server.
-    :return: Returns the completed process.
+    :return: The content of the robots.txt file or an error message.
     """
     print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
     attempts = [
         f'https://{target}/robots.txt',
         f'http://{target}/robots.txt',
     ]
+
+    if not target.startswith('www.') and is_target_webpage(target):
+        attempts.append(f'https://www.{target}/robots.txt')
+        attempts.append(f'http://www.{target}/robots.txt')
+
     for url in attempts:
-        try:
-            r = run_command_with_output_after(f'curl {url}')
-            if r.returncode == 0:
-                return r
-        except subprocess.TimeoutExpired:
-            continue
-    print(f'{COLOURS["warn"]} End of robots file! {COLOURS["end"]}')
-    return CompletedProcess
-    # return run_command_with_output_after(f'curl https://{target}/robots.txt')
+        r = run_command_with_output_after(f'curl {url}')
+        if r.returncode == 0 and ('User-agent' in r.stdout or 'User-Agent' in r.stdout):
+            return r.stdout
+
+    return "robots.txt file not found!"

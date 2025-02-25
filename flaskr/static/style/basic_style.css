@@ -7,6 +7,10 @@
     border: 1px solid #ccc;
     border-radius: 5px;
     background-color: #f4f4f4;
+    display: inline-block;
+    vertical-align: top;
+    margin-left: 10px;
+    margin-bottom: 40px;
 }
 
 #targets {
@@ -19,6 +23,9 @@
     border: 1px solid #ccc;
     border-radius: 5px;
     background-color: #f4f4f4;
+    vertical-align: top;
+    margin-left: 10px;
+    margin-bottom: 40px;
 }
 
 #ports {
@@ -26,6 +33,10 @@
     height: 100px;
     font-family: "Aeonik Pro", sans-serif;
     font-size: 14px;
+    display: inline-block;
+    vertical-align: top;
+    margin-left: 10px;
+    margin-bottom: 40px;
 }
 
 .form-label {
@@ -34,19 +45,52 @@
     vertical-align: top;
 }
 
+#ffuf_delay {
+    width: 89px;
+    height: 14px;
+    margin-left: 4px;
+}
+
+#ffuf_delay_div {
+    display: none;
+    margin-left: 0px;
+    margin-bottom: 33px;
+    height: 23px;
+}
+#ffuf_wordlists {
+    display: none;
+    display: inline-block;
+    vertical-align: top;
+}
+
+#ffuf_subdomain_wordlist {
+    display: inline-block;
+    margin-top: 10px;
+}
+
+#ffuf_webpage_wordlist {
+    display: inline-block;
+    margin-top: 33px;
+}
+
+#ffuf_subdomain_wordlist p, #ffuf_webpage_wordlist p {
+    display: inline;
+    margin-right: 10px;
+}
+
 #host_timeout {
     width: 89px;
     height: 14px;
 }
 
-textarea, .scan_type_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div, .ping_hosts_div, .ping_method_div {
+.scan_type_div, .enable_ffuf_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div, .ping_hosts_div, .ping_method_div, .chatgpt_api_call_div, .ffuf_delay_div {
     display: inline-block;
     vertical-align: top;
     margin-left: 10px;
     margin-bottom: 40px;
 }
 
-#os_detection_warning, #aggressive_scan_warning {
+#os_detection_warning, #aggressive_scan_warning, #chatgpt_api_call_warning {
     font-size: 13px;
     color: #FFA400;
     font-weight: bolder;

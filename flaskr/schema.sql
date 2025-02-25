@@ -54,5 +54,6 @@ CREATE TABLE config
     extra_commands_file     TEXT,
     ffuf_subdomain_wordlist TEXT,
     ffuf_webpage_wordlist   TEXT,
-    disable_chatgpt_api     TEXT
+    disable_chatgpt_api     TEXT,
+    enable_ffuf             TEXT
 );

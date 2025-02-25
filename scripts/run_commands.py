@@ -5,6 +5,23 @@ import subprocess
 import time
 
 
+def run_command_with_input(command: str, input: str) -> str:
+    """
+    Runs the given bash command with the given input.
+    :param command: Bash command to run.
+    :param input: The input that is to be given to the bash command.
+    :return: The stdout output if successful, otherwise raises an error with stderr.
+    """
+    try:
+        process = subprocess.Popen(command, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, text=True)
+        process.stdin.write(input)  # Send the input (e.g., pressing enter)
+        process.stdin.flush()
+        result = process.communicate()
+        return result[0]
+    except subprocess.CalledProcessError as e:
+        return e
+
 def run_command_with_output_after(command: str) ->  subprocess.CompletedProcess[str] | subprocess.CalledProcessError:
     """
     Runs the given bash command and prints the output once the command has finished running.

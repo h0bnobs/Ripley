@@ -9,60 +9,72 @@
     <script src="../static/js/port_scanning_settings.js"></script>
 </head>
 <body>
-    <div class="vertical-bar">
-        <a href="general-settings">General</a>
-        <a href="port-scanning-settings" class="active">Port Scanning</a>
-        <a href="host-discovery-settings">Host Discovery</a>
-        <a href="advanced-settings">Advanced Settings</a>
-    </div>
+<div class="vertical-bar">
+    <a href="general-settings">General</a>
+    <a href="port-scanning-settings" class="active">Port Scanning</a>
+    <a href="host-discovery-settings">Host Discovery</a>
+    <a href="advanced-settings">Advanced Settings</a>
+    <a href="add-commands">Add Commands</a>
+</div>
 
-    <div class="content">
-        <h2>Port scanning settings</h2>
+<div class="content">
+    <h2>Port scanning settings</h2>
 
-        <p>{{ config }}</p>
+    <p>{{ config }}</p>
 
-        <form action="/update-config" method="POST">
-            <label for="ports" class="form-label">Ports</label>
-            <textarea id="ports" name="ports_to_scan" placeholder="Example: 1-1024, 8080&#10;Leave blank for top 1000 most popular&#10;* for all ports">{{ ports_to_scan }}</textarea>
-            <br>
+    <form action="/update-config" method="POST">
+        <label for="ports" class="form-label">Ports</label>
+        <textarea id="ports" name="ports_to_scan"
+                  placeholder="Example: 1-1024, 8080&#10;Leave blank for top 1000 most popular&#10;* for all ports">{{ ports_to_scan }}</textarea>
+        <br>
 
-            <label for="scan_type" class="form-label">Scan type</label>
-            <div class="scan_type_div">
-                <label for="tcp">TCP</label>
-                <input type="checkbox" id="tcp" name="scan_type" value="TCP" {% if config['scan_type'] == 'TCP' %}checked{% endif %}>
-                <label for="udp">UDP</label>
-                <input type="checkbox" id="udp" name="scan_type" value="UDP" {% if config['scan_type'] == 'UDP' %}checked{% endif %}>
-                <label for="syn">SYN</label>
-                <input type="checkbox" id="syn" name="scan_type" value="SYN" {% if config['scan_type'] == 'SYN' %}checked{% endif %}>
-            </div>
-            <br>
+        <label for="tcp" class="form-label">Scan type</label>
+        <div class="scan_type_div">
+            <label for="tcp">TCP</label>
+            <input type="checkbox" id="tcp" name="scan_type" value="TCP" {% if config['scan_type'] == 'TCP' %}checked{%
+            endif %}>
+            <label for="udp">UDP</label>
+            <input type="checkbox" id="udp" name="scan_type" value="UDP" {% if config['scan_type'] == 'UDP' %}checked{%
+            endif %}>
+            <label for="syn">SYN</label>
+            <input type="checkbox" id="syn" name="scan_type" value="SYN" {% if config['scan_type'] == 'SYN' %}checked{%
+            endif %}>
+        </div>
+        <br>
 
-            <label for="aggressive_scan_type" class="form-label">Aggressive scan</label>
-            <div class="aggressive_scan_div">
-                <input type="checkbox" id="aggressive_scan" name="aggressive_scan" value="True" {% if config['aggressive_scan'] == 'True' %}checked{% endif %}>
-                <p id="aggressive_scan_warning">Warning: An aggressive port scan is intrusive and shouldn't be used against target networks without permission.</p>
-            </div>
-            <br>
+        <label for="aggressive_scan" class="form-label">Aggressive scan</label>
+        <div class="aggressive_scan_div">
+            <input type="checkbox" id="aggressive_scan" name="aggressive_scan" value="True" {% if config['aggressive_scan']
+            == 'True' %}checked{% endif %}>
+            <p id="aggressive_scan_warning">Warning: An aggressive port scan is intrusive and shouldn't be used against
+                target networks without permission.</p>
+        </div>
+        <br>
 
-            <label for="scan_speed" class="form-label">Port scan speed</label>
-            <div class="scan_speed_div">
-                <input type="range" id="scan_speed" name="scan_speed" min="1" max="5" value="{{ config['scan_speed'] }}">
-            </div>
-            <br>
+        <label for="scan_speed" class="form-label">Port scan speed</label>
+        <div class="scan_speed_div">
+            <input type="range" id="scan_speed" name="scan_speed" min="1" max="5" value="{{ config['scan_speed'] }}">
+        </div>
+        <br>
 
-            <label for="os_detection" class="form-label">OS detection</label>
-            <div class="os_detection_div">
-                <input type="checkbox" id="os_detection" name="os_detection" value="True" {% if config['os_detection'] == 'True' %}checked{% endif %}>
-                <p id="os_detection_warning">Note: This feature is NOT a guarantee and is NOT a reliable way to determine the OS of a target.</p>
-            </div>
-            <br>
+        <label for="os_detection" class="form-label">OS detection</label>
+        <div class="os_detection_div">
+            <input type="checkbox" id="os_detection" name="os_detection" value="True" {% if config['os_detection'] ==
+            'True' %}checked{% endif %}>
+            <p id="os_detection_warning">Note: This feature is NOT a guarantee and is NOT a reliable way to determine
+                the OS of a target.</p>
+        </div>
+        <br>
 
-            <label for="host_timeout" class="form-label">Host timeout (s)</label>
-            <textarea id="host_timeout" name="host_timeout" placeholder="Example: 0 or 5">{{ config['host_timeout'] }}</textarea>
-            <br>
-            <button class="btn_margin2" type="submit">Save</button>
-            <p id="needs-saving" style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">Needs saving!</p>
-        </form>
-    </div>
+        <label for="host_timeout" class="form-label">Host timeout (s)</label>
+        <textarea id="host_timeout" name="host_timeout"
+                  placeholder="Example: 0 or 5">{{ config['host_timeout'] }}</textarea>
+        <br>
+        <button class="btn_margin2" type="submit">Save</button>
+        <p id="needs-saving"
+           style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">
+            Needs saving!</p>
+    </form>
+</div>
 </body>
 </html>

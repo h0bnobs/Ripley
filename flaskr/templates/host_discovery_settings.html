@@ -9,39 +9,46 @@
     <script src="../static/js/host_discovery_settings.js"></script>
 </head>
 <body>
-    <div class="vertical-bar">
-        <a href="general-settings">General</a>
-        <a href="port-scanning-settings">Port Scanning</a>
-        <a href="host-discovery-settings" class="active">Host Discovery</a>
-        <a href="advanced-settings">Advanced Settings</a>
-    </div>
+<div class="vertical-bar">
+    <a href="general-settings">General</a>
+    <a href="port-scanning-settings">Port Scanning</a>
+    <a href="host-discovery-settings" class="active">Host Discovery</a>
+    <a href="advanced-settings">Advanced Settings</a>
+    <a href="add-commands">Add Commands</a>
+</div>
 
-    <div class="content">
-        <h2>Host Discovery Settings</h2>
-        <p>{{ config }}</p>
+<div class="content">
+    <h2>Host Discovery Settings</h2>
+    <p>{{ config }}</p>
 
-        <form action="/update-config" method="POST">
+    <form action="/update-config" method="POST">
 
-            <label for="ping_hosts" class="form-label">Ping Hosts</label>
-            <div class="ping_hosts_div">
-                <input type="checkbox" id="ping_hosts" name="ping_hosts" value="True" {% if config['ping_hosts'] == 'True' %}checked{% endif %}>
-            </div>
-            <br>
+        <label for="ping_hosts" class="form-label">Ping Hosts</label>
+        <div class="ping_hosts_div">
+            <input type="checkbox" id="ping_hosts" name="ping_hosts" value="True" {% if config['ping_hosts'] == 'True'
+            %}checked{% endif %}>
+        </div>
+        <br>
 
-            <label for="ping_method" class="form-label">Ping Method</label>
-            <div class="ping_method_div">
-                <label for="arp">ARP</label>
-                <input type="checkbox" id="arp" name="ping_method" value="ARP" {% if config['ping_method'] == 'ARP' %}checked{% endif %}>
-                <label for="tcp">TCP</label>
-                <input type="checkbox" id="tcp" name="ping_method" value="TCP" {% if config['ping_method'] == 'TCP' %}checked{% endif %}>
-                <label for="icmp">ICMP</label>
-                <input type="checkbox" id="icmp" name="ping_method" value="ICMP" {% if config['ping_method'] == 'ICMP' %}checked{% endif %}>
-            </div>
-            <br>
+        <label for="ping_method" class="form-label">Ping Method</label>
+        <div class="ping_method_div">
+            <label for="arp">ARP</label>
+            <input type="checkbox" id="arp" name="ping_method" value="ARP" {% if config['ping_method'] == 'ARP'
+            %}checked{% endif %}>
+            <label for="tcp">TCP</label>
+            <input type="checkbox" id="tcp" name="ping_method" value="TCP" {% if config['ping_method'] == 'TCP'
+            %}checked{% endif %}>
+            <label for="icmp">ICMP</label>
+            <input type="checkbox" id="icmp" name="ping_method" value="ICMP" {% if config['ping_method'] == 'ICMP'
+            %}checked{% endif %}>
+        </div>
+        <br>
 
         <button class="btn_margin2" type="submit">Save</button>
-        <p id="needs-saving" style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">Needs saving!</p>
-        </form>
-    </div>
+        <p id="needs-saving"
+           style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">
+            Needs saving!</p>
+    </form>
+</div>
 </body>
 </html>
