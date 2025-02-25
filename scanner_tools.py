@@ -125,7 +125,7 @@ def run_ftp(target: str) -> bool:
     """
     # if you want to test, machines are fawn, access and Devel on htb.
     try:
-        ftp = ftplib.FTP(timeout=10)
+        ftp = ftplib.FTP(timeout=3)
         ftp.connect(target)
         ftp.login('anonymous', '')
         print(f'{COLOURS["star"]} Anonymous FTP login successful!{COLOURS["end"]}')

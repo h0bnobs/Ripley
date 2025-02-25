@@ -81,7 +81,7 @@ def run_scans(target: str, config: Dict, pid: int) -> Dict:
         future_to_key = {
             executor.submit(run_host, target): 'host_output',
             executor.submit(run_smbclient, target): 'smbclient_output',
-            executor.submit(run_ftp, target): 'ftp_result',
+            executor.submit(run_ftp, target):  'ftp_result',
             executor.submit(run_dns_recon, target): 'dns_recon_output',
             executor.submit(get_metasploit_modules, target, pid): 'metasploit_output'
         }
@@ -103,7 +103,7 @@ def run_scans(target: str, config: Dict, pid: int) -> Dict:
             webpage_tasks = {
                 'ffuf_webpage': executor.submit(run_ffuf_webpage, target, config["ffuf_webpage_wordlist"],
                                                 config["enable_ffuf"], config["ffuf_delay"]),
-                'robots': executor.submit(get_robots_file, target),
+                'robots_output': executor.submit(get_robots_file, target),
                 'ffuf_subdomain': executor.submit(run_ffuf_subdomain,
                                                   target[4:] if target.startswith('www.') else target,
                                                   config["ffuf_subdomain_wordlist"],
@@ -131,14 +131,14 @@ def run_scans(target: str, config: Dict, pid: int) -> Dict:
 
             results.update({
                 'webpages_found': results.get('ffuf_webpage', 'Target is not a webpage!'),
-                'robots_file': results.get('robots', 'Target is not a webpage!'),
+                'robots_output': results.get('robots_output', 'Target is not a webpage!'),
                 'subdomain_enumeration': results.get('ffuf_subdomain', 'Target is not a webpage!'),
                 'wpscan_output': results.get('wpscan', 'Not a WordPress site')
             })
     else:
         results.update({
             'webpages_found': 'Target is not a webpage!',
-            'robots_file': 'Target is not a webpage!',
+            'robots_output': 'Target is not a webpage!',
             'subdomain_enumeration': 'Target is not a webpage!',
             'screenshot': '[*] Target is not a webpage!',
             'wpscan_output': 'Target is not a webpage!'
@@ -169,7 +169,7 @@ def save_to_db(db, results: Dict, extra_commands: List[str] = None) -> None:
          remove_leading_newline(remove_ansi_escape_codes(results['webpages_found'])),
          results['dns_recon_output'], results['nmap_output'],
          results['smbclient_output'], results['ftp_result'],
-         results.get('screenshot'), results.get('robots_file'),
+         results.get('screenshot'), results.get('robots_output'),
          results.get('ai_advice'), results.get('wpscan_output'),
          results.get('metasploit_output'))
     )

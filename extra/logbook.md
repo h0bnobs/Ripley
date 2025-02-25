@@ -166,3 +166,8 @@
 - Added wordlist uploads for `ffuf`
 - Added `add_commands` page to the left hand nav bar.
 - Added `select_commands_file` for when there is no commands file in the config.
+
+### Tuesday 25th February
+25/02/25 04:40pm
+- Improved the `chat_gpt_call` method so that it won't fail if there is a large amount of text in the response.
+- Removed the duplicate robots output from various places in `run_tool_for_gui.py`.
