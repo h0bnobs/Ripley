@@ -216,7 +216,7 @@ def format_dictionary_file(filepath):
 
 def get_cookies(target_url):
     """
-    Gets the cookies of the target page. Uses selenium to find the cookies, meaning it'll flash a chrome window up.
+    Gets the cookies of the target page. Uses selenium to find the cookies.
     :param target_url: The url of the page.
     :return final_cookies: A dictionary of the cookies.
     """

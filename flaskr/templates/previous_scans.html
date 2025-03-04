@@ -6,105 +6,118 @@
     <link rel="stylesheet" href="../static/style/basic_style.css">
 </head>
 <body>
-<h2>Previous Scans</h2>
-<button onclick="window.location.href='/'">Back</button><br><br>
 
-<!-- Filter dropdown -->
-<label for="filter">Filter by date:</label>
-<select id="filter" onchange="filterscan_results()">
-    <option value="all">All</option>
-    <option value="today">Today</option>
-    <option value="last7days">Last 7 Days</option>
-    <option value="last30days">Last 30 Days</option>
-</select><br><br>
+<div class="vertical-bar">
+    <a href="general-settings">General</a>
+    <a href="port-scanning-settings">Port Scanning</a>
+    <a href="host-discovery-settings">Host Discovery</a>
+    <a href="advanced-settings">Advanced Settings</a>
+    <a href="add-commands">Add Commands</a>
+    <a href="previous-scans" class="active">Previous Scans</a>
+</div>
 
-<!-- Filter by target -->
-<label for="targetFilter">Filter by target:</label>
-<input type="text" id="targetFilter" oninput="filterscan_results()"><br><br>
+<div class="content">
+    <h2>Previous Scans</h2>
+    <button onclick="window.location.href='/'">Back</button>
+    <br><br>
 
-<table border="1" id="scansTable">
-    <thead>
-    <tr>
-        <th>Target</th>
-        <th>Scan start time</th>
-        <th>Scan number</th>
-        <th class="button-cell" style="border: none">
-            <button id="sortButton" onclick="toggleSort()">Sort</button>
-        </th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for result in scan_results %}
-    <tr>
-        <td>{{ result['target'] }}</td>
-        <td>{{ result['scan_start_time'] }}</td>
-        <td>{{ result['scan_num'] }}</td>
-        <td class="button-cell">
-            <form action="{{ url_for('view_single_previous_scan') }}" method="post">
-                <input type="hidden" name="scan_start_time" value="{{ result['scan_start_time'] }}">
-                <button type="submit">View</button>
-            </form>
-        </td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
+    <!-- Filter dropdown -->
+    <label for="filter">Filter by date:</label>
+    <select id="filter" onchange="filterscan_results()">
+        <option value="all">All</option>
+        <option value="today">Today</option>
+        <option value="last7days">Last 7 Days</option>
+        <option value="last30days">Last 30 Days</option>
+    </select><br><br>
 
-<script>
-    let isAscending = false;
+    <!-- Filter by target -->
+    <label for="targetFilter">Filter by target:</label>
+    <input type="text" id="targetFilter" oninput="filterscan_results()"><br><br>
 
-    function toggleSort() {
-        const table = document.getElementById('scansTable').tBodies[0];
-        const rows = Array.from(table.rows);
+    <table border="1" id="scansTable">
+        <thead>
+        <tr>
+            <th>Target</th>
+            <th>Scan start time</th>
+            <th>Scan number</th>
+            <th class="button-cell" style="border: none">
+                <button id="sortButton" onclick="toggleSort()">Sort</button>
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for result in scan_results %}
+        <tr>
+            <td>{{ result['target'] }}</td>
+            <td>{{ result['scan_start_time'] }}</td>
+            <td>{{ result['scan_num'] }}</td>
+            <td class="button-cell">
+                <form action="{{ url_for('view_single_previous_scan') }}" method="post">
+                    <input type="hidden" name="scan_start_time" value="{{ result['scan_start_time'] }}">
+                    <button type="submit">View</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
 
-        rows.sort((a, b) => {
-            const scanNumA = parseInt(a.cells[2].textContent, 10);
-            const scanNumB = parseInt(b.cells[2].textContent, 10);
-            return isAscending ? scanNumA - scanNumB : scanNumB - scanNumA;
+    <script>
+        let isAscending = false;
+
+        function toggleSort() {
+            const table = document.getElementById('scansTable').tBodies[0];
+            const rows = Array.from(table.rows);
+
+            rows.sort((a, b) => {
+                const scanNumA = parseInt(a.cells[2].textContent, 10);
+                const scanNumB = parseInt(b.cells[2].textContent, 10);
+                return isAscending ? scanNumA - scanNumB : scanNumB - scanNumA;
+            });
+
+            rows.forEach(row => table.appendChild(row));
+
+            isAscending = !isAscending;
+
+            const sortButton = document.getElementById('sortButton');
+            sortButton.textContent = isAscending ? 'Sort' : 'Sort';
+        }
+
+        function filterscan_results() {
+            const filter = document.getElementById('filter').value;
+            const targetFilter = document.getElementById('targetFilter').value.toLowerCase();
+            const rows = document.querySelectorAll('#scansTable tbody tr');
+            const now = new Date();
+
+            rows.forEach(row => {
+                const scanDate = new Date(row.cells[1].textContent);
+                const target = row.cells[0].textContent.toLowerCase();
+                let showRow = true;
+
+                if (filter === 'today') {
+                    showRow = scanDate.toDateString() === now.toDateString();
+                } else if (filter === 'last7days') {
+                    const sevenDaysAgo = new Date(now);
+                    sevenDaysAgo.setDate(now.getDate() - 7);
+                    showRow = scanDate >= sevenDaysAgo && scanDate <= now;
+                } else if (filter === 'last30days') {
+                    const thirtyDaysAgo = new Date(now);
+                    thirtyDaysAgo.setDate(now.getDate() - 30);
+                    showRow = scanDate >= thirtyDaysAgo && scanDate <= now;
+                }
+
+                if (targetFilter && !target.includes(targetFilter)) {
+                    showRow = false;
+                }
+
+                row.style.display = showRow ? '' : 'none';
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            toggleSort();
         });
-
-        rows.forEach(row => table.appendChild(row));
-
-        isAscending = !isAscending;
-
-        const sortButton = document.getElementById('sortButton');
-        sortButton.textContent = isAscending ? 'Sort' : 'Sort';
-    }
-
-    function filterscan_results() {
-        const filter = document.getElementById('filter').value;
-        const targetFilter = document.getElementById('targetFilter').value.toLowerCase();
-        const rows = document.querySelectorAll('#scansTable tbody tr');
-        const now = new Date();
-
-        rows.forEach(row => {
-            const scanDate = new Date(row.cells[1].textContent);
-            const target = row.cells[0].textContent.toLowerCase();
-            let showRow = true;
-
-            if (filter === 'today') {
-                showRow = scanDate.toDateString() === now.toDateString();
-            } else if (filter === 'last7days') {
-                const sevenDaysAgo = new Date(now);
-                sevenDaysAgo.setDate(now.getDate() - 7);
-                showRow = scanDate >= sevenDaysAgo && scanDate <= now;
-            } else if (filter === 'last30days') {
-                const thirtyDaysAgo = new Date(now);
-                thirtyDaysAgo.setDate(now.getDate() - 30);
-                showRow = scanDate >= thirtyDaysAgo && scanDate <= now;
-            }
-
-            if (targetFilter && !target.includes(targetFilter)) {
-                showRow = false;
-            }
-
-            row.style.display = showRow ? '' : 'none';
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-        toggleSort();
-    });
-</script>
+    </script>
+</div>
 </body>
 </html>

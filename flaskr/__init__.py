@@ -213,15 +213,6 @@ def create_app(test_config=None) -> Flask:
 
             update_config_table(new_config)
 
-            # update current_config table
-            db = get_db()
-            t = new_config.get('config_filepath').split('/')
-            db.execute(
-                "UPDATE current_config SET full_path = ?, filename = ?",
-                (new_config.get('config_filepath'), t[-1])
-            )
-            db.commit()
-
             with open(new_config.get('config_filepath'), 'w') as file:
                 json.dump(new_config, file, indent=4)
 
@@ -380,15 +371,6 @@ def create_app(test_config=None) -> Flask:
             new_config["targets"] = targets
             # first update the config table
             update_config_table(new_config)
-
-            # then we update the current_config table, assuming that the config file is in the project root
-            t = new_config['config_filepath'].split('/')
-            db = get_db()
-            db.execute(
-                "UPDATE current_config SET full_path = ?, filename = ?",
-                (new_config['config_filepath'], t[-1])
-            )
-            db.commit()
 
             # now we update config.json in the directory root
             update_config_json_file()
@@ -556,13 +538,6 @@ def create_app(test_config=None) -> Flask:
             return error("No targets found, or there is a target error! Please check your config.",
                          url_for('general_settings'))
 
-        if config.get("extra_commands_file"):
-            with open(config.get("extra_commands_file"), 'r') as f:
-                if not f.readlines():
-                    return error(
-                        f'Extra commands file option in populated in config but, the file {config.get("extra_commands_file")} is empty!',
-                        url_for('general_settings'))
-
         full_target_list = parse_targets(unparsed_targets)
 
         if len(full_target_list) > 1:  # multiple targets
@@ -631,11 +606,8 @@ def create_app(test_config=None) -> Flask:
         :return: The redirect to the settings page.
         """
         selected_config = request.form['config_file']
-        filename = os.path.basename(selected_config)
-        db = get_db()
-        db.execute("INSERT INTO current_config (full_path, filename) VALUES (?, ?)", (selected_config, filename))
-        db.commit()
-        config = parse_config_file(selected_config)
+        with open(selected_config, 'r') as f:
+            config: dict = json.load(f)
         load_config_into_db(config, selected_config)
         app.config['NO_CONFIG_FOUND'] = False
         session['config'] = config
@@ -667,8 +639,8 @@ def get_current_config_as_full_path() -> str:
     :return: The full path of the current config file or None if not found.
     """
     db = get_db()
-    row = db.execute("SELECT full_path FROM current_config").fetchone()
-    return row['full_path'] if row else None
+    row = db.execute("SELECT config_filepath FROM config").fetchone()
+    return row['config_filepath'] if row else None
 
 
 def load_config_into_db(config: dict, config_filepath: str) -> None:
@@ -680,35 +652,79 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
     """
     db = get_db()
     if config:
-        db.execute(
-            """
-            INSERT INTO config (
-                targets, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file, 
-                ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
-                scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout,
-                enable_ffuf
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                config.get('targets', ''),
-                config.get('nmap_parameters', ''),
-                config_filepath,
-                config.get('ffuf_delay', ''),
-                config.get('extra_commands_file', ''),
-                config.get('ffuf_subdomain_wordlist', ''),
-                config.get('ffuf_webpage_wordlist', ''),
-                config.get('disable_chatgpt_api', ''),
-                config.get('ports_to_scan', ''),
-                config.get('scan_type', ''),
-                config.get('aggressive_scan', ''),
-                config.get('scan_speed', ''),
-                config.get('os_detection', ''),
-                config.get('ping_hosts', ''),
-                config.get('ping_method', ''),
-                config.get('host_timeout', ''),
-                config.get('enable_ffuf', '')
+        existing_config = db.execute("SELECT COUNT(*) FROM config").fetchone()[0]
+        if existing_config == 0:
+            db.execute(
+                """
+                INSERT INTO config (
+                    targets, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file, 
+                    ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
+                    scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout,
+                    enable_ffuf
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    config.get('targets', ''),
+                    config.get('nmap_parameters', ''),
+                    config_filepath,
+                    config.get('ffuf_delay', ''),
+                    config.get('extra_commands_file', ''),
+                    config.get('ffuf_subdomain_wordlist', ''),
+                    config.get('ffuf_webpage_wordlist', ''),
+                    config.get('disable_chatgpt_api', ''),
+                    config.get('ports_to_scan', ''),
+                    config.get('scan_type', ''),
+                    config.get('aggressive_scan', ''),
+                    config.get('scan_speed', ''),
+                    config.get('os_detection', ''),
+                    config.get('ping_hosts', ''),
+                    config.get('ping_method', ''),
+                    config.get('host_timeout', ''),
+                    config.get('enable_ffuf', '')
+                )
             )
-        )
+        else:
+            db.execute(
+                """
+                UPDATE config SET
+                    targets = ?,
+                    nmap_parameters = ?,
+                    config_filepath = ?,
+                    ffuf_delay = ?,
+                    extra_commands_file = ?,
+                    ffuf_subdomain_wordlist = ?,
+                    ffuf_webpage_wordlist = ?,
+                    disable_chatgpt_api = ?,
+                    ports_to_scan = ?,
+                    scan_type = ?,
+                    aggressive_scan = ?,
+                    scan_speed = ?,
+                    os_detection = ?,
+                    ping_hosts = ?,
+                    ping_method = ?,
+                    host_timeout = ?,
+                    enable_ffuf = ?
+                """,
+                (
+                    config.get('targets', ''),
+                    config.get('nmap_parameters', ''),
+                    config_filepath,
+                    config.get('ffuf_delay', ''),
+                    config.get('extra_commands_file', ''),
+                    config.get('ffuf_subdomain_wordlist', ''),
+                    config.get('ffuf_webpage_wordlist', ''),
+                    config.get('disable_chatgpt_api', ''),
+                    config.get('ports_to_scan', ''),
+                    config.get('scan_type', ''),
+                    config.get('aggressive_scan', ''),
+                    config.get('scan_speed', ''),
+                    config.get('os_detection', ''),
+                    config.get('ping_hosts', ''),
+                    config.get('ping_method', ''),
+                    config.get('host_timeout', ''),
+                    config.get('enable_ffuf', '')
+                )
+            )
         db.commit()
 
 
@@ -833,48 +849,47 @@ def update_config_json_file():
         return False
 
 
-def update_config_table(config):
-    if isinstance(config, dict):
-        db = get_db()
-        db.execute(
-            """
-            UPDATE config SET 
-                targets = ?,
-                nmap_parameters = ?, 
-                config_filepath = ?, 
-                ffuf_delay = ?, 
-                extra_commands_file = ?, 
-                ffuf_subdomain_wordlist = ?, 
-                ffuf_webpage_wordlist = ?, 
-                disable_chatgpt_api = ?,
-                ports_to_scan = ?,
-                scan_type = ?,
-                aggressive_scan = ?,
-                scan_speed = ?,
-                os_detection = ?,
-                ping_hosts = ?,
-                ping_method = ?,
-                host_timeout = ?,
-                enable_ffuf = ?
-            """,
-            (
-                config.get('targets', ''),
-                config.get('nmap_parameters', ''),
-                config.get('config_filepath', ''),
-                config.get('ffuf_delay', ''),
-                config.get('extra_commands_file', ''),
-                config.get('ffuf_subdomain_wordlist', ''),
-                config.get('ffuf_webpage_wordlist', ''),
-                config.get('disable_chatgpt_api', ''),
-                config.get('ports_to_scan', ''),
-                config.get('scan_type', ''),
-                config.get('aggressive_scan', ''),
-                config.get('scan_speed', ''),
-                config.get('os_detection', ''),
-                config.get('ping_hosts', ''),
-                config.get('ping_method', ''),
-                config.get('host_timeout', ''),
-                config.get('enable_ffuf', '')
-            )
+def update_config_table(config: dict):
+    db = get_db()
+    db.execute(
+        """
+        UPDATE config SET 
+            targets = ?,
+            nmap_parameters = ?, 
+            config_filepath = ?, 
+            ffuf_delay = ?, 
+            extra_commands_file = ?, 
+            ffuf_subdomain_wordlist = ?, 
+            ffuf_webpage_wordlist = ?, 
+            disable_chatgpt_api = ?,
+            ports_to_scan = ?,
+            scan_type = ?,
+            aggressive_scan = ?,
+            scan_speed = ?,
+            os_detection = ?,
+            ping_hosts = ?,
+            ping_method = ?,
+            host_timeout = ?,
+            enable_ffuf = ?
+        """,
+        (
+            config.get('targets', ''),
+            config.get('nmap_parameters', ''),
+            config.get('config_filepath', ''),
+            config.get('ffuf_delay', ''),
+            config.get('extra_commands_file', ''),
+            config.get('ffuf_subdomain_wordlist', ''),
+            config.get('ffuf_webpage_wordlist', ''),
+            config.get('disable_chatgpt_api', ''),
+            config.get('ports_to_scan', ''),
+            config.get('scan_type', ''),
+            config.get('aggressive_scan', ''),
+            config.get('scan_speed', ''),
+            config.get('os_detection', ''),
+            config.get('ping_hosts', ''),
+            config.get('ping_method', ''),
+            config.get('host_timeout', ''),
+            config.get('enable_ffuf', '')
         )
-        db.commit()
+    )
+    db.commit()

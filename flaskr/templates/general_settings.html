@@ -15,6 +15,7 @@
         <a href="host-discovery-settings">Host Discovery</a>
         <a href="advanced-settings">Advanced Settings</a>
         <a href="add-commands">Add Commands</a>
+        <a href="previous-scans">Previous Scans</a>
     </div>
 
     <div class="content">
@@ -98,29 +99,6 @@
             }'>
             <button class="btn_margin" type="submit">Run Ripley</button>
         </form>
-
-        <!-- goto previous scans page -->
-        <form action="/previous-scans" method="GET">
-            <button class="btn_margin" type="submit">View last scans</button>
-        </form>
-
-        <!-- goto add/edit commands page -->
-        <form action="/add-commands" method="GET">
-            <button class="btn_margin" type="submit">Add/Edit commands</button>
-        </form>
-
-        <!-- displays extra commands -->
-        {% if session['extra_commands'] %}
-        {% endif %}
-            <h4 style="text-decoration: underline">Extra command(s) to be run:</h4>
-            <p id="commands-display"></p>
-            <script>
-                $(document).ready(function() {
-                    var commands = {{ session['extra_commands']|tojson }};
-                    var commandsText = commands.join('<br>');
-                    $('#commands-display').html(commandsText);
-                });
-            </script>
 
         <!-- toggle file list visibility -->
         <h3>Currently working in {{ session['current_directory'] }}</h3>

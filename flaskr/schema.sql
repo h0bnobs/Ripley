@@ -1,10 +1,8 @@
-DROP TABLE IF EXISTS config;
-
-CREATE TABLE IF NOT EXISTS current_config
-(
-    full_path TEXT,
-    filename  TEXT
-);
+-- CREATE TABLE IF NOT EXISTS current_config
+-- (
+--     full_path TEXT,
+--     filename  TEXT
+-- );
 
 CREATE TABLE IF NOT EXISTS extra_commands
 (
@@ -34,10 +32,11 @@ CREATE TABLE IF NOT EXISTS scan_results
     dns_recon_output  TEXT,
     webpages_found    TEXT,
     wpscan_output     TEXT,
-    metasploit_output TEXT
+    metasploit_output TEXT,
+    security_headers  TEXT
 );
 
-CREATE TABLE config
+CREATE TABLE IF NOT EXISTS config
 (
     targets                 TEXT,
     nmap_parameters         TEXT,

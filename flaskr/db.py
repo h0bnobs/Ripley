@@ -44,10 +44,8 @@ def init_db() -> None:
     """
     Initializes the SQLite database by executing the SQL statements in 'flaskr/schema.sql'.
 
-    This function reads the SQL schema file (expected to be located within the application
-    package) and executes its contents to create the necessary tables and structure in the
-    database. This function is typically used when first setting up the application or when
-    resetting the database.
+    This function reads the SQL schema file and executes its contents to create the necessary tables and structure in the
+    database. This function is typically used when first setting up the application or when resetting the database.
     """
     db = get_db()
 

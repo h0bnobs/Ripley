@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="../static/style/results_style.css">
 </head>
 <body>
-<h1>Scan Results</h1>
+<h1 style="color: #FFA400">Scan Results</h1>
 <button onclick="window.location.href='/general-settings'">Back</button>
 <!-- Outer collapsible for the entire target -->
 <div class="collapsible outer-collapsible">Scan Results for Target: {{ target }}</div>
@@ -21,14 +21,19 @@
             <pre>{{ result['nmap_output'] }}</pre>
         </div>
 
+        <div class="collapsible">Host Command Output</div>
+        <div class="content inner-content">
+            <pre>{{ result['host_output'] }}</pre>
+        </div>
+
         <div class="collapsible">Metasploit Modules</div>
         <div class="content inner-content">
             <pre>{{ result['metasploit_output'] }}</pre>
         </div>
 
-        <div class="collapsible">Host Command Output</div>
+        <div class="collapsible">Security headers and Cookies</div>
         <div class="content inner-content">
-            <pre>{{ result['host_output'] }}</pre>
+            <pre>{{ result['security_headers'] }}</pre>
         </div>
 
         <div class="collapsible">Ffuf subdomain enumeration output:</div>

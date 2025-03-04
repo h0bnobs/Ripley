@@ -171,3 +171,10 @@
 25/02/25 04:40pm
 - Improved the `chat_gpt_call` method so that it won't fail if there is a large amount of text in the response.
 - Removed the duplicate robots output from various places in `run_tool_for_gui.py`.
+
+### Tuesday 4th March
+04/03/25 03:15pm
+- Added HTTP security header scanning.
+- Removed `current_config` table from the database and reworked the startup database logic.
+  - `config` is no longer wiped from start.
+  - `load_config_into_db` got reworked.

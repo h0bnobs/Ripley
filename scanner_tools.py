@@ -449,3 +449,29 @@ def get_robots_file(target: str) -> str:
             return r.stdout
 
     return "robots.txt file not found!"
+
+
+def check_security_headers(target: str) -> dict[str, str]:
+    """
+    Checks the security headers of the given URL.
+    :param target: The target to check.
+    :return: A dictionary with the security headers and their values.
+    """
+    response = requests.get(f'https://{target}')
+    security_headers = {
+        "Server": "",
+        "X-Powered-By": "",
+        "Set-Cookie": "",
+        "X-Frame-Options": "",  # should be deny or sameorigin
+        "Content-Security-Policy": "",
+        "Strict-Transport-Security": "",  # max age
+        "X-Content-Type-Options": "",  # should be nosniff
+        "Cache-Control": "",  # should be no-store, no-cache, must-revalidate
+        "Referrer-Policy": ""
+    }
+
+    for header in security_headers.keys():
+        if header in response.headers:
+            security_headers[header] = response.headers[header]
+
+    return security_headers

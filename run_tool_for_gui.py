@@ -14,7 +14,7 @@ from scripts.run_commands import run_command_no_output, run_command_with_output_
 from scanner_tools import (
     run_host, run_nmap, run_smbclient, run_ftp, get_screenshot,
     get_robots_file, run_dns_recon, run_ffuf_subdomain, is_target_webpage,
-    run_ffuf_webpage, get_metasploit_modules, run_wpscan
+    run_ffuf_webpage, get_metasploit_modules, run_wpscan, check_security_headers
 )
 
 
@@ -45,12 +45,21 @@ def check_and_kill_msf_rpc():
     subprocess.run('kill ' + t[0].split()[1], shell=True)
 
 def process_extra_commands(target: str, commands_file: str) -> List[str]:
+    """
+    Process extra commands from a file, replacing '{target}' with the actual target.
+    :param target: The target to replace in commands.
+    :param commands_file: The file containing extra commands.
+    :return: A list of command outputs.
+    """
     if not commands_file:
         return []
 
     try:
         with open(commands_file, 'r') as f:
             commands = [cmd.strip().replace('{target}', target) for cmd in f.readlines()]
+
+        if not commands:
+            return []
 
         outputs = []
         for command in commands:
@@ -110,7 +119,8 @@ def run_scans(target: str, config: Dict, pid: int) -> Dict:
                                                   config["enable_ffuf"], config["ffuf_delay"]
                                                   ),
                 'screenshot': executor.submit(get_screenshot, target),
-                'wpscan': executor.submit(run_wpscan, target) if is_wordpress_site(target) else None
+                'wpscan': executor.submit(run_wpscan, target) if is_wordpress_site(target) else None,
+                'security_headers': executor.submit(check_security_headers, target)
             }
 
             for key, future in webpage_tasks.items():
@@ -140,8 +150,9 @@ def run_scans(target: str, config: Dict, pid: int) -> Dict:
             'webpages_found': 'Target is not a webpage!',
             'robots_output': 'Target is not a webpage!',
             'subdomain_enumeration': 'Target is not a webpage!',
-            'screenshot': '[*] Target is not a webpage!',
-            'wpscan_output': 'Target is not a webpage!'
+            'screenshot': 'Target is not a webpage!',
+            'wpscan_output': 'Target is not a webpage!',
+            'security_headers': 'Target is not a webpage!'
         })
 
     # Process extra commands if configured
@@ -154,6 +165,18 @@ def run_scans(target: str, config: Dict, pid: int) -> Dict:
     else:
         results['ai_advice'] = "ChatGPT is disabled or there is an issue with the config!"
 
+    # parse security headers and cookies into one string for html display
+    final_str = ""
+    if 'security_headers' in results:
+        for header, value in results['security_headers'].items():
+            if value != "":
+                final_str += f"{header}: {value}\n"
+        final_str += "\n"
+        for header, value in results['security_headers'].items():
+            if value == "":
+                final_str += f"{header}: \n"
+        results['security_headers'] = final_str
+
     return results
 
 
@@ -162,8 +185,8 @@ def save_to_db(db, results: Dict, extra_commands: List[str] = None) -> None:
         """INSERT INTO scan_results 
            (target, host_output, subdomains_found, webpages_found, dns_recon_output,
             nmap_output, smbclient_output, ftp_result, screenshot, robots_output, 
-            ai_advice, wpscan_output, metasploit_output)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ai_advice, wpscan_output, metasploit_output, security_headers)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (results['target'], results['host_output'],
          remove_leading_newline(remove_ansi_escape_codes(results['subdomain_enumeration'])),
          remove_leading_newline(remove_ansi_escape_codes(results['webpages_found'])),
@@ -171,7 +194,7 @@ def save_to_db(db, results: Dict, extra_commands: List[str] = None) -> None:
          results['smbclient_output'], results['ftp_result'],
          results.get('screenshot'), results.get('robots_output'),
          results.get('ai_advice'), results.get('wpscan_output'),
-         results.get('metasploit_output'))
+         results.get('metasploit_output'), results.get('security_headers'))
     )
     db.commit()
 

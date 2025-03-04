@@ -9,7 +9,7 @@
     <script src="../static/js/multiple_targets_result.js"></script>
 </head>
 <body>
-<h1>Scan Results for Multiple Targets</h1>
+<h1 style="color: #FFA400">Scan Results for Multiple Targets</h1>
 <button onclick="window.location.href='/'">Back</button>
 {% for target, result in scan_results.items() %}
 <div class="collapsible outer-collapsible">Scan Results for Target: {{ target }}</div>
@@ -29,6 +29,11 @@
         <div class="collapsible">Metasploit Modules</div>
         <div class="content inner-content">
             <pre>{{ result['metasploit_output'] }}</pre>
+        </div>
+
+        <div class="collapsible">Security headers and Cookies</div>
+        <div class="content inner-content">
+            <pre>{{ result['security_headers'] }}</pre>
         </div>
 
         <div class="collapsible">Ffuf subdomain enumeration output</div>
