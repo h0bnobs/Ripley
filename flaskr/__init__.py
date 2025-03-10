@@ -543,13 +543,13 @@ def create_app(test_config=None) -> Flask:
         if len(full_target_list) > 1:  # multiple targets
             start = time.time()
             results_files = run_on_multiple_targets(full_target_list, config)
-            print(f'########### {time.time() - start} seconds ###########')
+            print(f'scan took {time.time() - start} seconds')
             session['scan_results_files'] = results_files  # stores list of file paths in session
             return redirect(url_for('multiple_results'))
         else:  # single target
             start = time.time()
             result_file = run_on_single_target(full_target_list, config)
-            print(f'########### {time.time() - start} seconds ###########')
+            print(f'scan took {time.time() - start} seconds')
             session['scan_result_file'] = result_file
             return redirect(url_for('single_result'))
 
@@ -597,6 +597,15 @@ def create_app(test_config=None) -> Flask:
             [os.path.join(os.getcwd(), file) for file in os.listdir(os.getcwd()) if file.endswith('.json')],
             key=lambda x: (not x.endswith('.json'))
         )
+
+        for file in files_in_dir:
+            with open(file, 'r+') as f:
+                data = json.load(f)
+                data['config_filepath'] = os.path.abspath(file)
+                f.seek(0)
+                json.dump(data, f, indent=4)
+                f.truncate()
+
         return render_template('select_config.html', files_in_directory=files_in_dir)
 
     @app.route('/set-config', methods=['POST'])

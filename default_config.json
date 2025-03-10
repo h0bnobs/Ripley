@@ -1,14 +1,19 @@
 {
+    "targets": "www.google.co.uk",
     "nmap_parameters": "",
-    "port_to_scan": "",
-    "config_filepath": "/home/max/temp/Ripley/default_config.json",
-    "ffuf_delay": "0.1",
+    "config_filepath": "/home/max/PycharmProjects/Ripley/default_config.json",
+    "ffuf_delay": "0.2",
     "extra_commands_file": "",
     "ffuf_subdomain_wordlist": "",
     "ffuf_webpage_wordlist": "",
     "disable_chatgpt_api": "true",
-    "targets": "www.google.co.uk",
     "ports_to_scan": "",
     "scan_type": "SYN",
-    "aggressive_scan": "False"
+    "aggressive_scan": "False",
+    "scan_speed": "3",
+    "os_detection": "False",
+    "ping_hosts": "False",
+    "ping_method": "",
+    "host_timeout": "",
+    "enable_ffuf": "True"
 }

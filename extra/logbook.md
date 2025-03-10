@@ -178,3 +178,10 @@
 - Removed `current_config` table from the database and reworked the startup database logic.
   - `config` is no longer wiped from start.
   - `load_config_into_db` got reworked.
+
+### Monday 10th March
+10/03/25 02:20pm
+- `Previous scans` section added to left nav bar.
+- Fixed a bug to do with `ffuf`
+- Added the `concurrency_test` for the writeup.
+- Updated default config.

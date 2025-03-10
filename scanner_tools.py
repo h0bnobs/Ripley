@@ -192,7 +192,7 @@ def get_screenshot(target: str) -> str:
     if screenshot_path:
         return find_full_filepath('output', f'{target}.png')
     else:
-        raise Exception(f"Could not connect to {target} using any protocol.")
+        return f"Could not connect to {target} using any protocol."
 
 
 def run_host(target: str) -> str:
@@ -370,19 +370,21 @@ def run_ffuf_subdomain(target: str, wordlist_filepath: str, enable_ffuf: str, de
                 f'ffuf -w {wordlist_filepath} '
                 f'-u https://FUZZ.{target} '
                 f'-H "Host: FUZZ.{target}" '
-                f'-o output/ffuf_subdomain_enumeration_{target}.txt '
+                f'-fc 404,500,301 '
                 f'-p {delay}'
             )
         else:
             command = (
                 f'ffuf -w {wordlist_filepath} '
-                f'-u https://FUZZ.{target} '
-                f'-H "Host: FUZZ.{target}" '
-                f'-o output/ffuf_subdomain_enumeration_{target}.txt'
+                f'-u https://FUZZ.{target} -H "Host: FUZZ.{target}" -fc 404,500,301'
             )
         print(f"using {wordlist_filepath}")
-        result = run_command_live_output(command)
-        #print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
+        result = run_command_with_output_after(command)
+        if isinstance(result, CalledProcessError):
+            result = "Error"
+        elif isinstance(result, CompletedProcess) and result.returncode == 0:
+            result = result.stdout
+        print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
         return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
     else:
         return "ffuf not enabled!"
@@ -415,12 +417,16 @@ def run_ffuf_webpage(target: str, wordlist_filepath: str, enable_ffuf: str, dela
                     wordlist_filepath = 'Directories_Common.wordlist'
 
         if delay != 0:
-            command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500 -p {delay}'
+            command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -fc 404,500,301 -p {delay}'
         else:
-            command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -o output/ffuf_webpage_enumeration_{target}.txt -fc 404,500'
+            command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -fc 404,500,301'
 
         print(f"using {wordlist_filepath}")
-        result = run_command_live_output(command)
+        result = run_command_with_output_after(command)
+        if isinstance(result, CalledProcessError):
+            result = "Error"
+        elif isinstance(result, CompletedProcess) and result.returncode == 0:
+            result = result.stdout
         print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
         return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
     else:

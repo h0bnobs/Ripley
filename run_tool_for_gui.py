@@ -167,7 +167,8 @@ def run_scans(target: str, config: Dict, pid: int) -> Dict:
 
     # parse security headers and cookies into one string for html display
     final_str = ""
-    if 'security_headers' in results:
+    if 'security_headers' in results and isinstance(results['security_headers'], dict):
+        print("security headers target" + target)
         for header, value in results['security_headers'].items():
             if value != "":
                 final_str += f"{header}: {value}\n"
