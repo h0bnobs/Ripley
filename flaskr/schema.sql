@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS scan_results
 CREATE TABLE IF NOT EXISTS config
 (
     targets                 TEXT,
-    nmap_parameters         TEXT,
     ports_to_scan           TEXT,
     scan_type               TEXT,
     aggressive_scan         TEXT,
@@ -54,5 +53,7 @@ CREATE TABLE IF NOT EXISTS config
     ffuf_subdomain_wordlist TEXT,
     ffuf_webpage_wordlist   TEXT,
     disable_chatgpt_api     TEXT,
-    enable_ffuf             TEXT
+    enable_ffuf             TEXT,
+    verbose                 TEXT,
+    openai_api_key          TEXT
 );

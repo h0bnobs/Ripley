@@ -73,6 +73,10 @@ def tempfile(results: Dict) -> str:
     return temp_file.name
 
 if __name__ == '__main__':
+    from concurrent.futures import ThreadPoolExecutor
+    execu = ThreadPoolExecutor()
+    print(execu._max_workers)
+    print(os.cpu_count() * 5)
     targets = ["google.com", "youtube.com", "facebook.com", "wikipedia.org", "instagram.com",
                                       "reddit.com", "bing.com", "x.com", "whatsapp.com", "taboola.com", "chatgpt.com",
                                       "yahoo.com", "amazon.com", "yandex.ru", "twitter.com", "duckduckgo.com", "yahoo.co.jp",

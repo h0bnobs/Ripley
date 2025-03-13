@@ -116,7 +116,7 @@ def remove_ansi_escape_codes(text) -> str:
     :param text: The text to remove ANSI from.
     :return: The result string with no ANSI
     """
-    print(text)
+    #print(text)
     ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
     return ansi_escape.sub('', text)
 

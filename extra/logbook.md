@@ -185,3 +185,15 @@
 - Fixed a bug to do with `ffuf`
 - Added the `concurrency_test` for the writeup.
 - Updated default config.
+
+### Thursday 13th March
+13/03/25 03:50pm
+- Renamed `__init__.py` to `flask_app.py`.
+- Added a textarea in `advanced_settings` for the user to input their openai api key.
+- Added robust changes to `chatgpt_call.py` so that the api key is retrieved from the config or env variable.
+- Added a `verbose` and therefore a non `verbose` option to the user.
+- Made the `ffuf` methods a bit more reliable.
+- Improved the concurrency logic by changing the way that threads are distributed.
+  - Instead of distributing the threads for each individual scan task, eg ffuf, dnsrecon, metasploit etc, they are now distributed for entire targets.
+- Expand all option in multiple results.
+- `ripley_cli.py` works now as if the user was using the gui. Just cant see results as nicely.

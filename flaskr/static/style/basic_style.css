@@ -1,188 +1,201 @@
 #config {
-    width: 31%;
-    height: 175px;
-    font-family: "Aeonik Pro", sans-serif;
-    font-size: 14px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f4f4f4;
-    display: inline-block;
-    vertical-align: top;
-    margin-left: 10px;
-    margin-bottom: 40px;
+  width: 31%;
+  height: 175px;
+  font-family: "Aeonik Pro", sans-serif;
+  font-size: 14px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f4f4f4;
+  display: inline-block;
+  vertical-align: top;
+  margin-left: 10px;
+  margin-bottom: 40px;
 }
 
 #targets {
-    display: inline;
-    width: 31%;
-    height: 100px;
-    font-family: "Aeonik Pro", sans-serif;
-    font-size: 14px;
-    padding: 10px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f4f4f4;
-    vertical-align: top;
-    margin-left: 10px;
-    margin-bottom: 40px;
+  display: inline;
+  width: 31%;
+  height: 100px;
+  font-family: "Aeonik Pro", sans-serif;
+  font-size: 14px;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f4f4f4;
+  vertical-align: top;
+  margin-left: 10px;
+  margin-bottom: 40px;
 }
 
 #ports {
-    width: 31%;
-    height: 100px;
-    font-family: "Aeonik Pro", sans-serif;
-    font-size: 14px;
-    display: inline-block;
-    vertical-align: top;
-    margin-left: 10px;
-    margin-bottom: 40px;
+  width: 31%;
+  height: 100px;
+  font-family: "Aeonik Pro", sans-serif;
+  font-size: 14px;
+  display: inline-block;
+  vertical-align: top;
+  margin-left: 10px;
+  margin-bottom: 40px;
 }
 
 .form-label {
-    display: inline-block;
-    width: 150px;
-    vertical-align: top;
+  display: inline-block;
+  width: 150px;
+  vertical-align: top;
 }
 
 #ffuf_delay {
-    width: 89px;
-    height: 14px;
-    margin-left: 4px;
+  width: 89px;
+  height: 14px;
+  margin-left: 4px;
 }
 
 #ffuf_delay_div {
-    display: none;
-    margin-left: 0px;
-    margin-bottom: 33px;
-    height: 23px;
+  display: none;
+  margin-left: 0px;
+  margin-bottom: 33px;
+  height: 23px;
 }
+
 #ffuf_wordlists {
-    display: none;
-    display: inline-block;
-    vertical-align: top;
+  display: none;
+  display: inline-block;
+  vertical-align: top;
 }
 
 #ffuf_subdomain_wordlist {
-    display: inline-block;
-    margin-top: 10px;
+  display: inline-block;
+  margin-top: 10px;
+}
+
+#verbose {
+  width: auto;
 }
 
 #ffuf_webpage_wordlist {
-    display: inline-block;
-    margin-top: 33px;
+  display: inline-block;
+  margin-top: 33px;
 }
 
 #ffuf_subdomain_wordlist p, #ffuf_webpage_wordlist p {
-    display: inline;
-    margin-right: 10px;
+  display: inline;
+  margin-right: 10px;
 }
 
 #host_timeout {
-    width: 89px;
-    height: 14px;
+  width: 89px;
+  height: 14px;
 }
 
-.scan_type_div, .enable_ffuf_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div, .ping_hosts_div, .ping_method_div, .chatgpt_api_call_div, .ffuf_delay_div {
-    display: inline-block;
-    vertical-align: top;
-    margin-left: 10px;
-    margin-bottom: 40px;
+.verbose_div, .openai_api_key, .scan_type_div, .enable_ffuf_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div, .ping_hosts_div, .ping_method_div, .chatgpt_api_call_div, .ffuf_delay_div {
+  display: inline-block;
+  vertical-align: top;
+  margin-left: 10px;
+  margin-bottom: 40px;
 }
 
-#os_detection_warning, #aggressive_scan_warning, #chatgpt_api_call_warning {
-    font-size: 13px;
-    color: #FFA400;
-    font-weight: bolder;
-    font-family: 'Aeonik Pro', sans-serif;
-    display: inline;
+#chatgpt_api_call_warning {
+  font-size: 13px;
+  color: #FFA400;
+  font-weight: bolder;
+  font-family: 'Aeonik Pro', sans-serif;
+  display: none;
+}
+
+#os_detection_warning, #aggressive_scan_warning {
+  font-size: 13px;
+  color: #FFA400;
+  font-weight: bolder;
+  font-family: 'Aeonik Pro', sans-serif;
+  display: inline;
 }
 
 .btn_margin2 {
-    margin-left: calc(31% + 81px);
+  margin-left: calc(31% + 81px);
 }
 
 input[type='file'], #files-list, h2, h3, h4, p {
-    color: white;
-    font-family: "Aeonik Pro", sans-serif;
+  color: white;
+  font-family: "Aeonik Pro", sans-serif;
 }
 
 body {
-    background-color: #00005B;
+  background-color: #00005B;
 }
 
 table {
-    border-collapse: collapse;
-    border-color: #FFA400;
+  border-collapse: collapse;
+  border-color: #FFA400;
 }
 
 th, td {
-    padding: 8px;
-    text-align: center;
-    border-color: #FFA400;
-    color: white;
+  padding: 8px;
+  text-align: center;
+  border-color: #FFA400;
+  color: white;
 }
 
 label {
-    color: white;
+  color: white;
 }
 
 .button-cell {
-    border: none;
+  border: none;
 }
 
 #commands-display, li {
-    color: #FFA400;
-    font-weight: bolder;
-    font-family: "Aeonik Pro", sans-serif;
+  color: #FFA400;
+  font-weight: bolder;
+  font-family: "Aeonik Pro", sans-serif;
 }
 
 .btn_margin {
-    margin-top: 10px;
+  margin-top: 10px;
 }
 
 .vertical-bar {
-    width: 200px;
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100%;
-    background-color: #3737ad;
-    padding-top: 20px;
+  width: 200px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: #3737ad;
+  padding-top: 20px;
 }
 
 .vertical-bar a {
-    padding: 10px 15px;
-    text-decoration: none;
-    font-size: 18px;
-    color: black;
-    display: block;
+  padding: 10px 15px;
+  text-decoration: none;
+  font-size: 18px;
+  color: black;
+  display: block;
 }
 
 .vertical-bar a:hover {
-    background-color: #7676d7;
-    color: white;
+  background-color: #7676d7;
+  color: white;
 }
 
 .vertical-bar a.active {
-    background-color: #FFA400;
-    color: white;
+  background-color: #FFA400;
+  color: white;
 }
 
 .content {
-    margin-left: 190px;
-    padding: 20px;
+  margin-left: 190px;
+  padding: 20px;
 }
 
 #file-input {
-    display: none;
+  display: none;
 }
 
 #upload-file-label {
-    display: inline;
-    text-decoration: underline;
-    color: #FFA400;
-    font-family: "Aeonik Pro", sans-serif;
-    cursor: pointer;
-    font-size: 0.85rem;
+  display: inline;
+  text-decoration: underline;
+  color: #FFA400;
+  font-family: "Aeonik Pro", sans-serif;
+  cursor: pointer;
+  font-size: 0.85rem;
 }

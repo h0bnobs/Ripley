@@ -1,77 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuration</title>
-    <link rel="stylesheet" href="../static/style/basic_style.css">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="../static/js/advanced_settings.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Configuration</title>
+  <link rel="stylesheet" href="../static/style/basic_style.css">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="../static/js/advanced_settings.js"></script>
 </head>
 <body>
-<div class="vertical-bar">
+  <div class="vertical-bar">
     <a href="general-settings">General</a>
     <a href="port-scanning-settings">Port Scanning</a>
     <a href="host-discovery-settings">Host Discovery</a>
     <a href="advanced-settings" class="active">Advanced Settings</a>
     <a href="add-commands">Add Commands</a>
     <a href="previous-scans">Previous Scans</a>
-</div>
+  </div>
 
-<div class="content">
+  <div class="content">
     <h2>Advanced Settings:</h2>
     <p>{{ config }}</p>
 
     <form action="/update-config" method="POST" enctype="multipart/form-data">
-        <label for="chatgpt_api_call" class="form-label">AI Insights</label>
-        <div class="chatgpt_api_call_div">
-            <input type="checkbox" id="chatgpt_api_call" name="chatgpt_api_call" value="True" {% if config['disable_chatgpt_api']
-            == 'false' %}checked{% endif %}>
-            <p id="chatgpt_api_call_warning">Note: This feature requires your API key to be inputted</p>
-        </div>
-        <br>
+      <label for="chatgpt_api_call" class="form-label">ChatGPT help</label>
+      <div class="chatgpt_api_call_div">
+        <input type="checkbox" id="chatgpt_api_call" name="chatgpt_api_call" value="True" {% if config['disable_chatgpt_api'] == 'false' %}checked{% endif %}>
+      </div>
+      <br>
+      <label for="openai_api_key" class="form-label">OpenAI API Key</label>
+      <div class="openai_api_key">
+        <textarea id="openai_api_key" name="openai_api_key" style="width: 410px; height: 68px;" placeholder="OpenAI API Key.">{{ config['openai_api_key'] }}</textarea>
+      </div>
+      <p id="chatgpt_api_call_warning">
+        Warning: you have enabled ChatGPT without setting an API key here. If you have set the OPENAI_API_KEY environment variable then proceed. If not, please read the manual for instructions on setting your API key.
+      </p>
+      <br>
 
-        <label for="enable_ffuf" class="form-label">Fuzzing</label>
-        <div class="enable_ffuf_div">
-            <input type="checkbox" id="enable_ffuf" name="enable_ffuf" value="True" {% if config['enable_ffuf'] ==
-            'True' %}checked{% endif %}>
-        </div>
-        <br>
+      <label for="enable_ffuf" class="form-label">Fuzzing</label>
+      <div class="enable_ffuf_div">
+        <input type="checkbox" id="enable_ffuf" name="enable_ffuf" value="True" {% if config['enable_ffuf'] == 'True' %}checked{% endif %}>
+      </div>
+      <br>
 
-        <div id="ffuf_delay_div">
-            <label for="ffuf_delay" class="form-label">Ffuf delay (s)</label>
-            <div class="ffuf_delay_div">
-                <textarea id="ffuf_delay" name="ffuf_delay"
-                          placeholder="Example: 0 or 0.2">{{ config['ffuf_delay'] }}</textarea>
-            </div>
+      <div id="ffuf_delay_div">
+        <label for="ffuf_delay" class="form-label">Ffuf delay (s)</label>
+        <div class="ffuf_delay_div">
+          <textarea id="ffuf_delay" name="ffuf_delay" placeholder="Example: 0 or 0.2">{{ config['ffuf_delay'] }}</textarea>
         </div>
+      </div>
 
-        <button type="submit" class="btn">Save</button>
-        <p id="needs-saving" style="color: #FFA400; font-weight: bolder; display: none;">Needs saving!</p>
+      <button type="submit" class="btn">Save</button>
     </form>
+      <p id="needs-saving" style="color: #FFA400; font-weight: bolder; display: none;">Save changes</p>
 
     <!-- File Upload Forms (Moved Outside Main Form) -->
     <div id="ffuf_wordlists">
-        <div id="ffuf_subdomain_wordlist">
-            <p>Subdomain Wordlist: <span id="subdomain_wordlist_display">{{ config['ffuf_subdomain_wordlist'] }}</span>
-            </p>
-            <form id="upload-subdomain-form" action="/upload-subdomain-wordlist" method="POST"
-                  enctype="multipart/form-data">
-                <label for="subdomain-file" id="upload-file-label">Upload subdomain wordlist</label>
-                <input type="file" id="subdomain-file" name="file" style="display: none;">
-            </form>
-        </div>
-        <br>
+      <div id="ffuf_subdomain_wordlist">
+        <p>
+          Subdomain Wordlist: <span id="subdomain_wordlist_display">{{ config['ffuf_subdomain_wordlist'] }}</span>
+        </p>
+        <form id="upload-subdomain-form" action="/upload-subdomain-wordlist" method="POST" enctype="multipart/form-data">
+          <label for="subdomain-file" id="upload-file-label">Upload subdomain wordlist</label>
+          <input type="file" id="subdomain-file" name="file" style="display: none;">
+        </form>
+      </div>
+      <br>
 
-        <div id="ffuf_webpage_wordlist">
-            <p>Webpage Wordlist: <span id="webpage_wordlist_display">{{ config['ffuf_webpage_wordlist'] }}</span></p>
-            <form id="upload-webpage-form" action="/upload-webpage-wordlist" method="POST"
-                  enctype="multipart/form-data">
-                <label for="webpage-file" id="upload-file-label">Upload webpage wordlist</label>
-                <input type="file" id="webpage-file" name="file" style="display: none;">
-            </form>
-        </div>
+      <div id="ffuf_webpage_wordlist">
+        <p>
+          Webpage Wordlist: <span id="webpage_wordlist_display">{{ config['ffuf_webpage_wordlist'] }}</span>
+        </p>
+        <form id="upload-webpage-form" action="/upload-webpage-wordlist" method="POST" enctype="multipart/form-data">
+          <label for="webpage-file" id="upload-file-label">Upload webpage wordlist</label>
+          <input type="file" id="webpage-file" name="file" style="display: none;">
+        </form>
+      </div>
     </div>
-</div>
+  </div>
 </body>
 </html>

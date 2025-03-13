@@ -3,7 +3,7 @@ This script runs the gui version of the tool
 """
 import webbrowser
 import threading
-from flaskr import create_app
+from flaskr.flask_app import create_app
 import time
 import os
 from scripts.run_commands import run_command_no_output

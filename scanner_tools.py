@@ -7,8 +7,7 @@ import requests
 from libnmap.parser import NmapParser
 from pymetasploit3.msfrpc import MsfRpcClient
 
-from scripts.run_commands import run_command_with_output_after, run_command_live_output, \
-    run_command_live_output_with_input, run_command_with_input
+from scripts.run_commands import run_command_with_output_after, run_command_live_output, run_command_with_input
 from scripts.utils import COLOURS, find_full_filepath, parse_nmap_xml
 from subprocess import CompletedProcess, CalledProcessError
 from typing import List, Dict, Type
@@ -17,7 +16,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
 
 
-def run_wpscan(target: str) -> str:
+def run_wpscan(target: str, verbose: str) -> str:
     """
     Runs the wpscan tool on the target.
     :param target: The target to run wpscan on.
@@ -25,33 +24,53 @@ def run_wpscan(target: str) -> str:
     """
     # wpscan works both with https:// at the start of the target and without
     command = f'wpscan --url {target} --random-user-agent'
-    print(f'{COLOURS["warn"]} Running wpscan! {COLOURS["end"]}')
+    if verbose == "True":
+        print(f'{COLOURS["warn"]} Running wpscan! {COLOURS["end"]}')
     try:
-        result = run_command_live_output(command)
+        result = run_command_live_output(command, verbose)
         return result
-    except Exception as e:
+    except:
         return f"Wpscan failed!"
 
 
-def get_metasploit_modules(target: str, pid: int) -> list[dict[str, str]]:
-
+def get_metasploit_modules(target: str, pid: int, verbose: str) -> list[dict[str, str]]:
+    """
+    Searches for metasploit modules based off nmap scan of the target.
+    :param target: The target
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
+    :param pid: The process id of the metasploit rpc server.
+    :return:
+    """
     output_filepath = f'flaskr/static/temp/nmap-{target}.xml'
     msf_password = 'msf'
 
-    def connect_to_msf():
-        print("[*] Connecting to Metasploit RPC Server...")
+    def connect_to_msf() -> MsfRpcClient | None:
+        """
+        Connects to the metasploit rpc server.
+        :return: The client object or None if connection failed.
+        """
         try:
             client = MsfRpcClient(msf_password, port=55553)
             return client
         except requests.exceptions.ConnectionError as e:
-            print(f"[!] Connection error: {e}")
+            print(f"[!] metaploit connection error: {e}")
             return None
 
     def stop_msf_rpc(process):
-        print("[*] Stopping Metasploit RPC Server...")
+        """
+        Stops the metasploit rpc server.
+        :param process: The process id of the metasploit rpc server.
+        """
         subprocess.Popen(['kill', str(process)])
 
     def search_for_modules(client, product, version) -> list[dict[str, str]]:
+        """
+        Searches for metasploit modules based off the product and version.
+        :param client: The metasploit rpc client.
+        :param product: Product name from the nmap scan.
+        :param version: Version of the product from the nmap scan.
+        :return:
+        """
         search_results = client.modules.search(product)
         return [result for result in search_results if any(isinstance(value, str) and version in value for value in result.values())]
 
@@ -62,31 +81,17 @@ def get_metasploit_modules(target: str, pid: int) -> list[dict[str, str]]:
         client = connect_to_msf()
         report = NmapParser.parse_fromfile(output_filepath)
         for host in report.hosts: # report.hosts is a list
-            for service in host.services: # host.services is a list
+            for service in host.services:
+                # services are open ports
+                # host.services is a list
                 product = service.banner_dict.get('product')
                 version = service.banner_dict.get('version')
                 if product and version:
                     return search_for_modules(client, product, version)
-    except Exception as e:
-        print(e)
+    except:
         stop_msf_rpc(pid)
+        return []
     return []
-
-
-def run_wpscan(target: str) -> str:
-    """
-    Runs the wpscan tool on the target.
-    :param target: The target to run wpscan on.
-    :return: The output of the wpscan tool as a string or a CalledProcessError.
-    """
-    # wpscan works both with https:// at the start of the target and without
-    command = f'wpscan --url {target} --random-user-agent'
-    print(f'{COLOURS["warn"]} Running wpscan! {COLOURS["end"]}')
-    try:
-        result = run_command_live_output(command)
-        return result
-    except Exception as e:
-        return f"Wpscan failed!"
 
 
 def is_target_webpage(target: str) -> bool:
@@ -95,7 +100,6 @@ def is_target_webpage(target: str) -> bool:
     :param target: The target to check.
     :return: True if the target has one of the mentioned ports open, False otherwise.
     """
-    print(target)
     open_ports = parse_nmap_xml(f'flaskr/static/temp/nmap-{target}.xml', [80, 443, 8080, 8443])
     #return open_ports in ['80', '443', '8080', '8443']
     return any(port in open_ports for port in ['80', '443', '8080', '8443'])
@@ -104,23 +108,26 @@ def is_target_webpage(target: str) -> bool:
     # return False
 
 
-def run_dns_recon(target: str) -> str:
+def run_dns_recon(target: str, verbose: str) -> str:
     """
     Runs the dnsrecon tool on the target.
     :param target: The target domain.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: The live output of the dnsrecon tool.
     """
-    print(f'{COLOURS["warn"]} Running dnsrecon! {COLOURS["end"]}')
+    if verbose == "True":
+        print(f'{COLOURS["warn"]} Running dnsrecon! {COLOURS["end"]}')
     if target.startswith('www.'):
-        return run_command_live_output(f"dnsrecon -d {target.replace('www.', '', 1)}")
+        return run_command_live_output(f"dnsrecon -d {target.replace('www.', '', 1)}", verbose)
     else:
-        return run_command_live_output(f'dnsrecon -d {target}')
+        return run_command_live_output(f'dnsrecon -d {target}', verbose)
 
 
-def run_ftp(target: str) -> bool:
+def run_ftp(target: str, verbose: str) -> bool:
     """
     Tries to connect to the target and login to ftp anonymously.
     :param target: The target FTP server.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: True if anonymous connection was successful, False otherwise.
     """
     # if you want to test, machines are fawn, access and Devel on htb.
@@ -128,42 +135,48 @@ def run_ftp(target: str) -> bool:
         ftp = ftplib.FTP(timeout=3)
         ftp.connect(target)
         ftp.login('anonymous', '')
-        print(f'{COLOURS["star"]} Anonymous FTP login successful!{COLOURS["end"]}')
+        if verbose == 'True':
+            print(f'{COLOURS["star"]} Anonymous FTP login successful!{COLOURS["end"]}')
         ftp.quit()
         return True
-    except (ftplib.error_perm, Exception) as e:
-        print(f'{COLOURS["warn"]} Anonymous FTP not allowed! {COLOURS["end"]}')
+    except:
+        if verbose == 'True':
+            print(f'{COLOURS["warn"]} Anonymous FTP not allowed! {COLOURS["end"]}')
         return False
 
 
-def run_smbclient(target: str) -> None | str:
+def run_smbclient(target: str, verbose: str) -> None | str:
     """
     Runs the smbclient tool to list shares on the target.
     :param target: The target to run smbclient on.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return:
     """
     # if you want to test this properly: https://app.hackthebox.com/machines/186 - box name is bastion and has open
     # smb shares.
     command = f"smbclient -L {target}"
     try:
-        print(f'{COLOURS["warn"]} Smbclient will now attempt to list shares. {COLOURS["end"]}')
+        if verbose == 'True':
+            print(f'{COLOURS["warn"]} Smbclient will now attempt to list shares. {COLOURS["end"]}')
         # result = run_command_with_output_after(command)
         result = run_command_with_input(command, '\n')
         if result == '':
             result = "No smb shares found!"
         return result
-    except subprocess.CalledProcessError as e:
-        error_message = f"An error occurred while executing '{command}': {e}\nError output: {e.stderr}"
+    except:
+        error_message = f"An error occurred while executing {command}"
         return error_message
 
 
-def get_screenshot(target: str) -> str:
+def get_screenshot(target: str, verbose: str) -> str:
     """
     Gets a screenshot of the webpage and stores it in the output directory.
     :param target: The target webpage.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: The full filepath of the screenshot.
     """
-    print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
+    if verbose == 'True':
+        print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
     os.makedirs("output", exist_ok=True)
     attempts = [
         f'https://{target}',
@@ -195,28 +208,42 @@ def get_screenshot(target: str) -> str:
         return f"Could not connect to {target} using any protocol."
 
 
-def run_host(target: str) -> str:
+def run_host(target: str, verbose: str) -> str:
     """
     Runs the host command on the target.
     :param target: The target to run host on.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: The output of the host command as a string.
     """
     command = f'host {target}'
     if target.startswith('www.'):
-        one = run_command_with_output_after(f'host {target.split("www.")[1]}')
-        two = run_command_with_output_after(command)
-        return f'{one.stdout}\n{two.stdout}'
+        one = run_command_with_output_after(f'host {target.split("www.")[1]}', verbose)
+        two = run_command_with_output_after(command, verbose)
+        two = run_command_with_output_after(command, verbose)
+        if isinstance(one, CalledProcessError) and isinstance(two, CompletedProcess):
+            return two.stdout
+        elif isinstance(one, CompletedProcess) and isinstance(two, CalledProcessError):
+            return one.stdout
+        elif isinstance(one, CompletedProcess) and isinstance(two, CompletedProcess):
+            return f'{one.stdout}\n{two.stdout}'
+        else:
+            return "Both commands failed!"
     else:
-        result = run_command_with_output_after(command)
-        # print(result.stdout)
-        return result.stdout
+        result = run_command_with_output_after(command, verbose)
+        if verbose == 'True':
+            print(result.stdout)
+        if isinstance(result, CompletedProcess):
+            return result.stdout
+        else:
+            return f"Error with {command}"
 
 
-def run_nmap(target: str, nmap_settings: dict) -> str:
+def run_nmap(target: str, nmap_settings: dict, verbose: str) -> str:
     """
     Runs the port scanner nmap on the target.
     :param target: The target to run nmap on.
     :param nmap_settings: The nmap settings as a dictionary.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: The output of the nmap tool as a string.
     """
     # spinner = Spinner()
@@ -231,19 +258,21 @@ def run_nmap(target: str, nmap_settings: dict) -> str:
             text=True,
         )
         if result.returncode == 0:
-            print(result.stdout)
+            if verbose == 'True':
+                print(result.stdout)
             return result.stdout
 
-    command = parse_nmap_settings(nmap_settings, target)
+    command = parse_nmap_settings(nmap_settings, target, verbose)
     output = scan(command)
     return output
 
 
-def parse_nmap_settings(settings: dict, target: str) -> str:
+def parse_nmap_settings(settings: dict, target: str, verbose: str) -> str:
     """
     Takes the nmap settings and target and produces a valid nmap command based off these
     :param settings: The nmap settings as a string.
     :param target: The target to run nmap on.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: The nmap command as a string.
     """
     ports_to_scan = settings.get("ports_to_scan", "")
@@ -327,7 +356,8 @@ def parse_nmap_settings(settings: dict, target: str) -> str:
     if host_timeout:
         command += f" --host-timeout {host_timeout}s"
 
-    print(f"Generated Nmap Command: {command}")
+    if verbose == 'True':
+        print(f"running: {command} {target}")
 
     # todo logic here for the output file, eg if the user wants to save the output to a file, then change it from this:
     #   because the file in the form `-oX flaskr/static/temp/nmap-{target}.xml` is used in the is_target_webpage function, so if the user wants to save the output
@@ -339,31 +369,19 @@ def parse_nmap_settings(settings: dict, target: str) -> str:
     return command
 
 
-def run_ffuf_subdomain(target: str, wordlist_filepath: str, enable_ffuf: str, delay=0) -> str:
+def run_ffuf_subdomain(target: str, wordlist_filepath: str, enable_ffuf: str, verbose: str, delay=0) -> str:
     """
     Runs ffuf to find subdomains. WARNING: remember to remove 'www.' from the target before running this function.
     :param target: The target to run ffuf on.
     :param wordlist_filepath: The path to the wordlist file.
     :param enable_ffuf: A string that is either 'True' or 'False' to enable or disable ffuf.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :param delay: An optional delay to add between requests.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
     if enable_ffuf == 'True':
-        print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
-        # https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt
-        # command = f'ffuf -w test_subdomains.txt -u https://FUZZ.{target} -H "Host: FUZZ.{target}" -o output/ffuf_subdomain_enumeration_{target}.txt -p {delay}'
-        if not wordlist_filepath:
-            # check if wordlist exists already in proj root
-            for file in os.listdir():
-                if file == 'dnspod-top2000-sub-domains.txt':
-                    wordlist_filepath = 'dnspod-top2000-sub-domains.txt'
-                    break
-            else:
-                # get suitable wordlist from git if not found
-                url = 'https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt'
-                t = run_command_with_output_after(f'curl -o dnspod-top2000-sub-domains.txt {url}')
-                if t.returncode == 0:
-                    wordlist_filepath = 'dnspod-top2000-sub-domains.txt'
+        if verbose == 'True':
+            print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
 
         if delay != 0:
             command = (
@@ -378,68 +396,58 @@ def run_ffuf_subdomain(target: str, wordlist_filepath: str, enable_ffuf: str, de
                 f'ffuf -w {wordlist_filepath} '
                 f'-u https://FUZZ.{target} -H "Host: FUZZ.{target}" -fc 404,500,301'
             )
-        print(f"using {wordlist_filepath}")
-        result = run_command_with_output_after(command)
+        result = run_command_with_output_after(command, verbose)
         if isinstance(result, CalledProcessError):
             result = "Error"
         elif isinstance(result, CompletedProcess) and result.returncode == 0:
             result = result.stdout
-        print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
+        if verbose == 'True':
+            print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
         return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
     else:
         return "ffuf not enabled!"
 
 
-def run_ffuf_webpage(target: str, wordlist_filepath: str, enable_ffuf: str, delay = 0) -> str:
+def run_ffuf_webpage(target: str, wordlist_filepath: str, enable_ffuf: str, verbose: str, delay = 0) -> str:
     """
     Runs ffuf to find webpages.
     :param target: The target to run ffuf on.
     :param wordlist_filepath: The path to the wordlist file.
     :param enable_ffuf: A string that is either 'True' or 'False' to enable or disable ffuf.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :param delay: An optional delay to add between requests.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
-    print('############# IN FFUF WEBPAGE METHOD #############')
     if enable_ffuf == 'True':
-        print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
-
-        if not wordlist_filepath:
-            # check if wordlist exists already in proj root
-            for file in os.listdir():
-                if file == 'Directories_Common.wordlist':
-                    wordlist_filepath = 'Directories_Common.wordlist'
-                    break
-            else:
-                # get suitable wordlist from git if not found
-                url = 'https://raw.githubusercontent.com/emadshanab/WordLists-20111129/master/Directories_Common.wordlist'
-                t = run_command_with_output_after(f'curl -o Directories_Common.wordlist {url}')
-                if t.returncode == 0:
-                    wordlist_filepath = 'Directories_Common.wordlist'
+        if verbose == 'True':
+            print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
 
         if delay != 0:
             command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -fc 404,500,301 -p {delay}'
         else:
             command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -fc 404,500,301'
 
-        print(f"using {wordlist_filepath}")
-        result = run_command_with_output_after(command)
+        result = run_command_with_output_after(command, verbose)
         if isinstance(result, CalledProcessError):
             result = "Error"
         elif isinstance(result, CompletedProcess) and result.returncode == 0:
             result = result.stdout
-        print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
+        if verbose  == 'True':
+            print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
         return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
     else:
         return "ffuf not enabled!"
 
 
-def get_robots_file(target: str) -> str:
+def get_robots_file(target: str, verbose: str) -> str:
     """
     Gets the robots.txt file from the target website.
     :param target: The target server.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: The content of the robots.txt file or an error message.
     """
-    print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
+    if verbose == 'True':
+        print(f'{COLOURS["warn"]} Getting robots.txt file! {COLOURS["end"]}')
     attempts = [
         f'https://{target}/robots.txt',
         f'http://{target}/robots.txt',
@@ -450,7 +458,7 @@ def get_robots_file(target: str) -> str:
         attempts.append(f'http://www.{target}/robots.txt')
 
     for url in attempts:
-        r = run_command_with_output_after(f'curl {url}')
+        r = run_command_with_output_after(f'curl {url}', verbose)
         if r.returncode == 0 and ('User-agent' in r.stdout or 'User-Agent' in r.stdout):
             return r.stdout
 

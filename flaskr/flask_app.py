@@ -1,19 +1,26 @@
 """
-This script initializes and configures a Flask application for running various network scanning tools.
+This script initialises and configures a Flask application for running various network scanning tools.
 
 It sets up the Flask app, configures routes for updating and displaying configurations, running scans on targets,
-and displaying scan results. It also ensures the database is initialized and provides utility functions for
+and displaying scan results. It also ensures the database is initialised and provides utility functions for
 handling scan results and configurations.
 
 Modules:
-    flaskr.db: Manages the SQLite database connection and initialization.
+    flaskr.db: Manages the SQLite database connection and initialisation.
     flaskr.run_tool_for_gui: Contains functions to run network scanning tools on single or multiple targets.
     scripts.utils: Provides utility functions for parsing configuration files and displaying banners.
 """
-import json, os, time, re, ipaddress
+import ipaddress
+import json
+import os
+import re
+import time
+
 from flask import Flask, render_template, request, redirect, url_for, session, Response
+
 from flaskr.db import get_db, init_db
 from run_tool_for_gui import run_on_multiple_targets, run_on_single_target
+from scripts.run_commands import run_command_with_output_after
 from scripts.utils import parse_config_file, robots_string
 
 
@@ -24,9 +31,9 @@ def create_app(test_config=None) -> Flask:
     """
     Create and configure the Flask application.
 
-    This function initializes the Flask app with necessary configurations, routes, and database connections.
+    This function initialises the Flask app with necessary configurations, routes, and database connections.
     It also sets up the instance folder, applies the configuration (from a provided test config or the instance config),
-    and ensures the database is initialized. Routes for updating and displaying configurations, running scans on targets,
+    and ensures the database is initialised. Routes for updating and displaying configurations, running scans on targets,
     and displaying scan results are defined within this function.
 
     :param test_config: Optional dictionary containing test configuration settings to override the default app config.
@@ -71,7 +78,6 @@ def create_app(test_config=None) -> Flask:
         session['files_in_directory'] = data["files_in_directory"]
         session['extra_commands'] = data["extra_commands"]
         session['current_directory'] = os.getcwd()
-        print(session['config'])
         return render_template('general_settings.html')
 
     @app.route('/port-scanning-settings', methods=['GET'])
@@ -132,7 +138,6 @@ def create_app(test_config=None) -> Flask:
         else:
             return error("Something went wrong trying to update the config. Please try again!",
                          url_for('advanced_settings'))
-
 
     @app.route('/upload-webpage-wordlist', methods=['POST'])
     def upload_webpage_wordlist() -> Response | str:
@@ -295,7 +300,6 @@ def create_app(test_config=None) -> Flask:
         except FileNotFoundError:
             return redirect(url_for('select_commands_file'))
 
-
     @app.route('/select-commands-file', methods=['GET'])
     def select_commands_file() -> str:
         """
@@ -307,7 +311,6 @@ def create_app(test_config=None) -> Flask:
             key=lambda x: (not x.endswith('.txt'))
         )
         return render_template('select_commands_file.html', files_in_directory=files_in_dir)
-
 
     @app.route('/set-commands-file', methods=['POST'])
     def set_commands_file() -> Response:
@@ -367,8 +370,18 @@ def create_app(test_config=None) -> Flask:
         # if the request is coming from /general-settings:
         if referer and 'general-settings' in referer:
             new_config = json.loads(request.form['config'])
+
+            #print(request.form)
             targets = request.form['targets']
             new_config["targets"] = targets
+
+
+            if 'verbose' in request.form:
+                new_config["verbose"] = 'True'
+            else:
+                new_config["verbose"] = 'False'
+
+
             # first update the config table
             update_config_table(new_config)
 
@@ -383,7 +396,7 @@ def create_app(test_config=None) -> Flask:
 
             return redirect(url_for('general_settings'))
 
-        #if the request is coming from /port-scanning-settings:
+        # if the request is coming from /port-scanning-settings:
         elif referer and 'port-scanning-settings' in referer:
             values = request.form.to_dict()  # form data
 
@@ -427,7 +440,7 @@ def create_app(test_config=None) -> Flask:
             session['ports_to_scan'] = config["ports_to_scan"]
             return redirect(url_for('port_scanning_settings'))
 
-        #if the request is coming from /host-discovery-settings:
+        # if the request is coming from /host-discovery-settings:
         elif referer and 'host-discovery-settings' in referer:
             values = request.form.to_dict()  # form data
 
@@ -436,11 +449,11 @@ def create_app(test_config=None) -> Flask:
             if 'ping_method' not in values:
                 old_config['ping_method'] = ''
 
-            if 'ping_hosts' in values: # if ping_hosts is in the form data then its true
+            if 'ping_hosts' in values:  # if ping_hosts is in the form data then its true
                 old_config['ping_hosts'] = 'True'
                 if 'ping_method' in values:
                     old_config['ping_method'] = values['ping_method']
-            elif 'ping_hosts' not in values: #if ping_hosts is not in the form data then its false and ping_methods is empty
+            elif 'ping_hosts' not in values:  # if ping_hosts is not in the form data then its false and ping_methods is empty
                 old_config['ping_hosts'] = 'False'
                 old_config['ping_method'] = ''
 
@@ -457,24 +470,27 @@ def create_app(test_config=None) -> Flask:
             session['config'] = config
             return redirect(url_for('host_discovery_settings'))
 
-        #if the request is coming from /advanced-settings:
+        # if the request is coming from /advanced-settings:
         elif referer and 'advanced-settings' in referer:
             values = request.form.to_dict()
             old_config = session['config']  # old config from when save was pressed
 
-            if 'chatgpt_api_call' in values: #either 'True' or not in
+            if 'chatgpt_api_call' in values:  # either 'True' or not in
                 old_config['disable_chatgpt_api'] = 'false'
             elif 'chatgpt_api_call' not in values:
                 old_config['disable_chatgpt_api'] = 'true'
 
+            if 'openai_api_key' in request.form:
+                old_config["openai_api_key"] = request.form['openai_api_key']
+            else:
+                old_config["openai_api_key"] = ""
+
             if 'enable_ffuf' in values:
                 old_config['enable_ffuf'] = 'True'
-
-
             else:
                 old_config['enable_ffuf'] = 'False'
 
-                #if 'ffuf_subdomain_wordlist' in values:
+            old_config['ffuf_delay'] = values['ffuf_delay']
 
             # update the config table
             update_config_table(old_config)
@@ -531,7 +547,9 @@ def create_app(test_config=None) -> Flask:
         When the 'run' button is pressed.
         :return: The redirect for either the multiple targets' page, or the single targets' page, depending on the config.
         """
-        config = session.get('config')[0]
+        old_config = session.get('config')[0]
+        check_wordlists(old_config)
+        config = reload_homepage()["config"][0]
         unparsed_targets = config.get('targets', '').strip().split(', ')
 
         if not unparsed_targets:
@@ -539,7 +557,6 @@ def create_app(test_config=None) -> Flask:
                          url_for('general_settings'))
 
         full_target_list = parse_targets(unparsed_targets)
-
         if len(full_target_list) > 1:  # multiple targets
             start = time.time()
             results_files = run_on_multiple_targets(full_target_list, config)
@@ -666,15 +683,14 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
             db.execute(
                 """
                 INSERT INTO config (
-                    targets, nmap_parameters, config_filepath, ffuf_delay, extra_commands_file, 
+                    targets, config_filepath, ffuf_delay, extra_commands_file, 
                     ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
                     scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout,
-                    enable_ffuf
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    enable_ffuf, verbose, openai_api_key
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     config.get('targets', ''),
-                    config.get('nmap_parameters', ''),
                     config_filepath,
                     config.get('ffuf_delay', ''),
                     config.get('extra_commands_file', ''),
@@ -689,7 +705,9 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     config.get('ping_hosts', ''),
                     config.get('ping_method', ''),
                     config.get('host_timeout', ''),
-                    config.get('enable_ffuf', '')
+                    config.get('enable_ffuf', ''),
+                    config.get('verbose', ''),
+                    config.get('openai_api_key', '')
                 )
             )
         else:
@@ -697,7 +715,6 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                 """
                 UPDATE config SET
                     targets = ?,
-                    nmap_parameters = ?,
                     config_filepath = ?,
                     ffuf_delay = ?,
                     extra_commands_file = ?,
@@ -712,11 +729,12 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     ping_hosts = ?,
                     ping_method = ?,
                     host_timeout = ?,
-                    enable_ffuf = ?
+                    enable_ffuf = ?,
+                    verbose = ?,
+                    openai_api_key = ?
                 """,
                 (
                     config.get('targets', ''),
-                    config.get('nmap_parameters', ''),
                     config_filepath,
                     config.get('ffuf_delay', ''),
                     config.get('extra_commands_file', ''),
@@ -731,7 +749,9 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     config.get('ping_hosts', ''),
                     config.get('ping_method', ''),
                     config.get('host_timeout', ''),
-                    config.get('enable_ffuf', '')
+                    config.get('enable_ffuf', ''),
+                    config.get('verbose', ''),
+                    config.get('openai_api_key', '')
                 )
             )
         db.commit()
@@ -808,7 +828,6 @@ def update_config_json_file():
         """
         SELECT
             targets,
-            nmap_parameters,
             config_filepath,
             ffuf_delay,
             extra_commands_file,
@@ -823,7 +842,9 @@ def update_config_json_file():
             ping_hosts,
             ping_method,
             host_timeout,
-            enable_ffuf
+            enable_ffuf,
+            verbose,
+            openai_api_key
         FROM config
         """
     )
@@ -834,7 +855,6 @@ def update_config_json_file():
             config_data = json.load(outfile)
         config_data.update({
             "targets": row["targets"],
-            "nmap_parameters": row["nmap_parameters"],
             "config_filepath": row["config_filepath"],
             "ffuf_delay": row["ffuf_delay"],
             "extra_commands_file": row["extra_commands_file"],
@@ -849,7 +869,9 @@ def update_config_json_file():
             "ping_hosts": row["ping_hosts"],
             "ping_method": row["ping_method"],
             "host_timeout": row["host_timeout"],
-            "enable_ffuf": row["enable_ffuf"]
+            "enable_ffuf": row["enable_ffuf"],
+            "verbose": row["verbose"],
+            "openai_api_key": row["openai_api_key"]
         })
         with open(config_data["config_filepath"], 'w') as file:
             json.dump(config_data, file, indent=4)
@@ -859,12 +881,15 @@ def update_config_json_file():
 
 
 def update_config_table(config: dict):
+    """
+    Updates the config table in the database with the new config.
+    :param config: The new config as a dictionary.
+    """
     db = get_db()
     db.execute(
         """
         UPDATE config SET 
             targets = ?,
-            nmap_parameters = ?, 
             config_filepath = ?, 
             ffuf_delay = ?, 
             extra_commands_file = ?, 
@@ -879,11 +904,12 @@ def update_config_table(config: dict):
             ping_hosts = ?,
             ping_method = ?,
             host_timeout = ?,
-            enable_ffuf = ?
+            enable_ffuf = ?,
+            verbose = ?,
+            openai_api_key = ?
         """,
         (
             config.get('targets', ''),
-            config.get('nmap_parameters', ''),
             config.get('config_filepath', ''),
             config.get('ffuf_delay', ''),
             config.get('extra_commands_file', ''),
@@ -898,7 +924,74 @@ def update_config_table(config: dict):
             config.get('ping_hosts', ''),
             config.get('ping_method', ''),
             config.get('host_timeout', ''),
-            config.get('enable_ffuf', '')
+            config.get('enable_ffuf', ''),
+            config.get('verbose', ''),
+            config.get('openai_api_key', '')
         )
     )
     db.commit()
+
+def check_wordlists(config: dict):
+    """
+    Checks if the ffuf wordlists are set in the config. If they aren't it then checks if the defaults have been downloaded
+    and if they have, it then sets them in the config. If they haven't, aka its the first time running, then it downloads them
+    and sets them in the config.
+    :param config: The configuration file as a dictionary.
+    :return: None
+    """
+    # if there are no wordlists, download them and set them in the config
+    def check_subdomain(subdomain_wordlist: str):
+        """
+        Check if the subdomain wordlist is set in the config. If it isn't, it then checks if the default has been downloaded
+        :param subdomain_wordlist: The subdomain wordlist in the config.
+        :return:
+        """
+        if not subdomain_wordlist:
+            # check if wordlist exists already in proj root
+            db = get_db()
+            for file in os.listdir():
+                if file == 'dnspod-top2000-sub-domains.txt':
+                    # the file has been downloaded already but not set in the config!
+                    db.execute("UPDATE config SET ffuf_subdomain_wordlist = 'dnspod-top2000-sub-domains.txt'")
+                    db.commit()
+                    update_config_json_file()
+                    return
+            else:
+                # get suitable wordlist from git if not found
+                url = 'https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt'
+                t = run_command_with_output_after(f'curl -o dnspod-top2000-sub-domains.txt {url}', config['verbose'])
+                if t.returncode == 0:
+                    db.execute("UPDATE config SET ffuf_subdomain_wordlist = 'dnspod-top2000-sub-domains.txt'")
+                    db.commit()
+                    update_config_json_file()
+                    return
+
+    def check_directory(directory_wordlist: str):
+        """
+        Check if the directory wordlist is set in the config. If it isn't, it then checks if the default has been downloaded
+        :param directory_wordlist: The directory wordlist in the config.
+        :return:
+        """
+        if not directory_wordlist:
+            db = get_db()
+            # check if wordlist exists already in proj root
+            for file in os.listdir():
+                if file == 'Directories_Common.wordlist':
+                    db.execute("UPDATE config SET ffuf_webpage_wordlist = 'Directories_Common.wordlist'")
+                    db.commit()
+                    update_config_json_file()
+                    return
+            else:
+                # get suitable wordlist from git if not found
+                url = 'https://raw.githubusercontent.com/emadshanab/WordLists-20111129/master/Directories_Common.wordlist'
+                t = run_command_with_output_after(f'curl -o Directories_Common.wordlist {url}', config['verbose'])
+                if t.returncode == 0:
+                    db.execute("UPDATE config SET ffuf_webpage_wordlist = 'Directories_Common.wordlist'")
+                    db.commit()
+                    update_config_json_file()
+                    return
+
+    subdomain_wordlist = config['ffuf_subdomain_wordlist']
+    check_subdomain(subdomain_wordlist)
+    directory_wordlist = config['ffuf_webpage_wordlist']
+    check_directory(directory_wordlist)

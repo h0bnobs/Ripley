@@ -1,26 +1,23 @@
 import argparse
-import subprocess
-import os
-import ftplib
 import concurrent.futures
-from typing import List, Dict, Optional
-from selenium.webdriver.chrome.options import Options
-from selenium import webdriver
+import os
+from typing import List, Dict
+
 from termcolor import colored
-from flaskr import get_db, create_app
+
+from flaskr.flask_app import create_app, parse_targets
 from run_tool_for_gui import run_on_multiple_targets, run_on_single_target
-from scripts.utils import (
-    COLOURS, parse_config_file, find_full_filepath,
-    remove_ansi_escape_codes, parse_nmap_xml, remove_leading_newline
+from scanner_tools import (
+    run_host, run_nmap, run_smbclient, run_ftp, run_dns_recon, run_ffuf_webpage, run_ffuf_subdomain, get_robots_file,
+    get_screenshot
 )
 from scripts.run_commands import (
-    run_command_with_output_after, run_command_live_output_with_input,
-    run_command_live_output, run_command_no_output
+    run_command_no_output
 )
-from scripts.chatgpt_call import make_chatgpt_api_call
-from scanner_tools import (
-    run_host, run_nmap, run_smbclient, run_ftp, run_dns_recon, run_ffuf_webpage, run_ffuf_subdomain, get_robots_file, get_screenshot
+from scripts.utils import (
+    parse_config_file, remove_ansi_escape_codes, parse_nmap_xml, remove_leading_newline
 )
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="ripley - One stop basic web app scanner.")
@@ -125,23 +122,17 @@ def main():
         if config is None:
             raise Exception("Config is null!")
 
-        target_list = get_target_list(
-            config.get("single_target", "").strip(),
-            config.get("multiple_targets", []),
-            config.get("targets_file", "").strip()
-        )
+        unparsed_targets = config.get('targets', '').strip().split(', ')
+        full_target_list = parse_targets(unparsed_targets)
 
-        if not target_list:
+        if not full_target_list:
             raise Exception("Target list empty!")
 
-        if len(target_list) > 1:
-            run_on_multiple_targets(target_list, config)
+        if len(full_target_list) > 1:
+            run_on_multiple_targets(full_target_list, config)
         else:
-            run_on_single_target(target_list, config)
+            run_on_single_target(full_target_list, config)
 
-
-# Keep existing tool-specific functions (run_nmap, run_ftp, etc.) but move them to a separate file
-# called scanner_tools.py for better organization
 
 if __name__ == "__main__":
     main()

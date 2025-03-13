@@ -1,6 +1,6 @@
 """
-Initializes and manages the sqlite database connection.
-provides functions for connecting to and closing the database, initializing the database with
+Initialises and manages the sqlite database connection.
+provides functions for connecting to and closing the database, initialising the database with
 a schema, and adding a CLI command to set up the database.
 """
 
@@ -42,7 +42,7 @@ def close_db(e: Any =None) -> None:
 
 def init_db() -> None:
     """
-    Initializes the SQLite database by executing the SQL statements in 'flaskr/schema.sql'.
+    Initialises the SQLite database by executing the SQL statements in 'flaskr/schema.sql'.
 
     This function reads the SQL schema file and executes its contents to create the necessary tables and structure in the
     database. This function is typically used when first setting up the application or when resetting the database.
@@ -56,15 +56,15 @@ def init_db() -> None:
 @click.command('init-db')
 def init_db_command() -> None:
     """
-    Command-line command for initializing the SQLite database.
+    Command-line command for initialising the SQLite database.
 
     Executes the `init_db()` function to clear existing data and create new tables, then
-    outputs a message confirming successful initialization.
+    outputs a message confirming successful initialisation.
 
     Usage: flask init-db
     """
     init_db()
-    click.echo('Initialized the database.')
+    click.echo('Initialised the database.')
 
 
 def init_app(app: Flask) -> None:
@@ -73,7 +73,7 @@ def init_app(app: Flask) -> None:
 
     Adds the `close_db()` function to the app's teardown context to ensure the database
     connection is closed at the end of each request. Also registers the `init-db` CLI command
-    for initializing the database.
+    for initialising the database.
 
     Args:
         app (Flask): The Flask application instance to which the database functions should be registered.

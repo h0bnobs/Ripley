@@ -11,6 +11,8 @@
 <body>
 <h1 style="color: #FFA400">Scan Results for Multiple Targets</h1>
 <button onclick="window.location.href='/'">Back</button>
+<button id="expand-all">Expand All</button>
+<input type="text" id="search-input" placeholder="Search...">
 {% for target, result in scan_results.items() %}
 <div class="collapsible outer-collapsible">Scan Results for Target: {{ target }}</div>
 <div class="content outer-content">
@@ -72,7 +74,7 @@
 
         <div class="collapsible">Robots.txt Contents:</div>
         <div class="content inner-content">
-            <pre>{{ result['robots_file'] }}</pre>
+            <pre>{{ result['robots_output'] }}</pre>
         </div>
 
         <div class="collapsible">Wpscan Output:</div>
@@ -94,6 +96,32 @@
 </div>
 {% endfor %}
 
+<script>
+$(document).ready(function() {
+    // Expand all collapsibles
+    $('#expand-all').click(function() {
+        $('.collapsible').each(function() {
+            $(this).addClass('active');
+            $(this).next('.content').slideDown();
+        });
+    });
+
+    // Search functionality
+    $('#search-input').on('input', function() {
+        var searchTerm = $(this).val().toLowerCase();
+        $('.results pre').each(function() {
+            var text = $(this).text().toLowerCase();
+            if (text.includes(searchTerm)) {
+                $(this).closest('.content').prev('.collapsible').addClass('active');
+                $(this).closest('.content').slideDown();
+                $(this).html($(this).text().replace(new RegExp(searchTerm, 'gi'), (match) => `<mark>${match}</mark>`));
+            } else {
+                $(this).html($(this).text());
+            }
+        });
+    });
+});
+</script>
 
 </body>
 </html>

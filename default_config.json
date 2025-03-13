@@ -15,5 +15,7 @@
     "ping_hosts": "False",
     "ping_method": "",
     "host_timeout": "",
-    "enable_ffuf": "True"
+    "enable_ffuf": "True",
+    "verbose": "True",
+    "openai_api_key": ""
 }
