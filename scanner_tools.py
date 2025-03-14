@@ -10,7 +10,6 @@ from pymetasploit3.msfrpc import MsfRpcClient
 from scripts.run_commands import run_command_with_output_after, run_command_live_output, run_command_with_input
 from scripts.utils import COLOURS, find_full_filepath, parse_nmap_xml
 from subprocess import CompletedProcess, CalledProcessError
-from typing import List, Dict, Type
 from selenium.common import WebDriverException
 from selenium.webdriver.chrome.options import Options
 from selenium import webdriver
@@ -20,10 +19,11 @@ def run_wpscan(target: str, verbose: str) -> str:
     """
     Runs the wpscan tool on the target.
     :param target: The target to run wpscan on.
+    :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: The output of the wpscan tool as a string or a CalledProcessError.
     """
     # wpscan works both with https:// at the start of the target and without
-    command = f'wpscan --url {target} --random-user-agent'
+    command = f'wpscan --no-banner --url https://{target} --random-user-agent'
     if verbose == "True":
         print(f'{COLOURS["warn"]} Running wpscan! {COLOURS["end"]}')
     try:
@@ -187,9 +187,9 @@ def get_screenshot(target: str, verbose: str) -> str:
     for url in attempts:
         try:
             chrome_options = Options()
-            chrome_options.add_argument("--headless")  # Run in headless mode
-            chrome_options.add_argument("--no-sandbox")  # Required for some environments
-            chrome_options.add_argument("--disable-dev-shm-usage")  # Overcome limited resource problems
+            chrome_options.add_argument("--headless")
+            chrome_options.add_argument("--no-sandbox")
+            chrome_options.add_argument("--disable-dev-shm-usage")
             chromedriver = webdriver.Chrome(options=chrome_options)
             chromedriver.set_window_size(1500, 1080)
             chromedriver.set_page_load_timeout(10)

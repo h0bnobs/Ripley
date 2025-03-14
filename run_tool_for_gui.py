@@ -10,7 +10,7 @@ from typing import List, Dict
 import concurrent.futures
 from flask import current_app
 from flaskr.flask_app import get_db
-from scripts.utils import COLOURS, remove_ansi_escape_codes, remove_leading_newline, is_wordpress_site
+from scripts.utils import COLOURS, remove_ansi_escape_codes, remove_leading_newline
 from scripts.chatgpt_call import make_chatgpt_api_call
 from scripts.run_commands import run_command_no_output, run_command_with_output_after, run_command_with_input
 from scanner_tools import (
@@ -145,7 +145,7 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
                                                   config["enable_ffuf"], verbose, config["ffuf_delay"]
                                                   ),
                 'screenshot': executor.submit(get_screenshot, target, verbose),
-                'wpscan': executor.submit(run_wpscan, target, verbose) if is_wordpress_site(target) else None,
+                'wpscan': executor.submit(run_wpscan, target, verbose),
                 'security_headers': executor.submit(check_security_headers, target)
             }
 

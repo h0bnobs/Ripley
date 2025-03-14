@@ -197,3 +197,11 @@
   - Instead of distributing the threads for each individual scan task, eg ffuf, dnsrecon, metasploit etc, they are now distributed for entire targets.
 - Expand all option in multiple results.
 - `ripley_cli.py` works now as if the user was using the gui. Just cant see results as nicely.
+
+### Friday 14th March
+14/03/25 06:10pm
+- Added to the `select_commands_file` feature.
+- Removed the SQLite db file from the repo.
+- Removed `is_wordpress_site` from `utils.py` and instead let `run_wpscan` check this instead. Also found a bug and fixed the method so that it works properly.
+- Added `default_extra_commands.txt`
+- 

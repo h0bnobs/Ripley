@@ -1,7 +1,7 @@
 {
     "targets": "www.google.co.uk",
     "nmap_parameters": "",
-    "config_filepath": "/home/max/PycharmProjects/Ripley/default_config.json",
+    "config_filepath": "",
     "ffuf_delay": "0.2",
     "extra_commands_file": "",
     "ffuf_subdomain_wordlist": "",

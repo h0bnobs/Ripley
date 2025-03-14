@@ -197,33 +197,3 @@ def get_extra_commands(filepath: str) -> list[str] | None:
         lines = f.readlines()
     commands = [line.strip() for line in lines]
     return commands if commands else None
-
-def is_wordpress_site(target: str) -> bool:
-    """
-    Checks if the URL is a Wordpress site and if that site has an open wp-admin page.
-    :param target: The target to check.
-    :return: True if the URL is a Wordpress site, False otherwise.
-    """
-    # cant use get_robots_file because of circular import.
-    attempts = [
-        f'https://{target}/robots.txt',
-        f'http://{target}/robots.txt',
-    ]
-    for url in attempts:
-        try:
-            robots_file = run_command_no_output(f'curl {url}')
-            if robots_file.returncode == 0:
-                break
-        except Exception as e:
-            return False
-    if robots_file:
-        possible_strings = [
-            "wp-admin",
-            "wp-login",
-            "wp-content",
-            "wordpress"
-        ]
-        if any(s in robots_file.stdout.lower() for s in possible_strings):
-            return True
-    else:
-        return False

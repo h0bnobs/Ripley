@@ -307,7 +307,7 @@ def create_app(test_config=None) -> Flask:
         :return: The render template of the select commands file html file.
         """
         files_in_dir = sorted(
-            [os.path.join(os.getcwd(), file) for file in os.listdir(os.getcwd()) if file.endswith('.txt')],
+            [os.path.join(os.getcwd(), file) for file in os.listdir(os.getcwd()) if file.endswith('.txt') and file != 'requirements.txt'],
             key=lambda x: (not x.endswith('.txt'))
         )
         return render_template('select_commands_file.html', files_in_directory=files_in_dir)
@@ -359,7 +359,7 @@ def create_app(test_config=None) -> Flask:
 
         return redirect(url_for('view_add_commands'))
 
-    @app.route('/update-config', methods=['POST'])
+    @app.post('/update-config')
     def update_config() -> Response | str:
         """
         This endpoint is for updating the config. It can be called from the settings pages (general, port scanning, etc.).
@@ -823,6 +823,9 @@ def reload_homepage() -> dict:
 
 
 def update_config_json_file():
+    """
+    Updates the config.json file in the directory root with the new config from the database.
+    """
     db = get_db()
     cursor = db.execute(
         """
