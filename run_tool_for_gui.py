@@ -60,20 +60,19 @@ def check_and_kill_msf_rpc():
     t = result.stdout.split('\n')
     subprocess.run('kill ' + t[0].split()[1], shell=True)
 
-def process_extra_commands(target: str, commands_file: str, verbose: str) -> List[str]:
+def process_extra_commands(target: str, extra_commands: str, verbose: str) -> List[str]:
     """
-    Process extra commands from a file, replacing '{target}' with the actual target.
+    Process extra commands from a string, replacing '{target}' with the actual target.
     :param target: The target to replace in commands.
-    :param commands_file: The file containing extra commands.
+    :param extra_commands: The string containing extra commands separated by commas.
     :param verbose: Whether to print extra command outputs.
     :return: A list of command outputs.
     """
-    if not commands_file:
+    if not extra_commands:
         return []
 
     try:
-        with open(commands_file, 'r') as f:
-            commands = [cmd.strip().replace('{target}', target) for cmd in f.readlines()]
+        commands = [cmd.strip().replace('{target}', target) for cmd in extra_commands.split(', ')]
 
         if not commands:
             return []
@@ -84,7 +83,7 @@ def process_extra_commands(target: str, commands_file: str, verbose: str) -> Lis
                 print(f'{COLOURS["warn"]} Running extra command: {command}!{COLOURS["end"]}')
             result = run_command_with_output_after(command, verbose)
             outputs.append(
-                remove_ansi_escape_codes(result.stdout) if result.returncode == 0
+                remove_ansi_escape_codes(result.stdout) if isinstance(result, CompletedProcess)
                 else f"Command {command} failed: {remove_ansi_escape_codes(result.stderr)}"
             )
         return outputs
@@ -182,12 +181,16 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
         })
 
     # process extra commands if configured
-    if extra_outputs := process_extra_commands(target, config.get('extra_commands_file'), config.get('verbose')):
+    extra_outputs = process_extra_commands(target, config.get('extra_commands'), config.get('verbose'))
+    if extra_outputs:
         results['extra_commands_output'] = extra_outputs
 
     # make chatgpt api call if enabled
     if config.get('disable_chatgpt_api', '').lower() != 'true':
+        extra_commands_output = results.get('extra_commands_output')
         results['ai_advice'] = make_chatgpt_api_call(results, config.get("openai_api_key"))
+        if extra_commands_output is not None:
+            results['extra_commands_output'] = extra_commands_output
     else:
         results['ai_advice'] = "ChatGPT is disabled or there is an issue with the config!"
 
@@ -203,6 +206,7 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
                 final_str += f"{header}: \n"
         results['security_headers'] = final_str
 
+    print(f'{results["target"]}: {results["extra_commands_output"]}')
     # Increment the counter and print the current count
     with counter_lock:
         scan_counter += 1
@@ -211,7 +215,7 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
     return results
 
 
-def save_to_db(db, results: Dict, extra_commands: List[str] = None) -> None:
+def save_to_db(db, results: dict, extra_commands: list[str]=None) -> None:
     """
     Save the results to the database.
     :param db: The database connection.
@@ -269,7 +273,8 @@ def run_on_multiple_targets(target_list: List[str], config: Dict) -> List[str]:
         with app.app_context():
             results = run_scans(target, config, pid, config['verbose'], total_scans)
             results = {k: (v.stdout if isinstance(v, CompletedProcess) else v) for k, v in results.items()}
-            save_to_db(get_db(), results)
+            extra_commands: list = config['extra_commands'].split(', ')
+            save_to_db(get_db(), results, extra_commands=extra_commands)
 
             #from pprint import pprint
             #pprint({k: (v, type(v)) for k, v in results.items() if not isinstance(v, str)})
@@ -296,6 +301,7 @@ def run_on_single_target(target_list: List[str], config: Dict) -> str:
     results = run_scans(target, config, pid, config['verbose'], len(target_list))
     results['smbclient_output'] = remove_ansi_escape_codes(results['smbclient_output'])
     results = {k: (v.stdout if isinstance(v, CompletedProcess) else v) for k, v in results.items()}
-    save_to_db(get_db(), results)
+    extra_commands: list = config['extra_commands'].split(', ')
+    save_to_db(get_db(), results, extra_commands=extra_commands)
     run_command_no_output(f'rm flaskr/static/temp/nmap-{target}.xml')
     return save_scan_results_to_tempfile(results)

@@ -23,11 +23,8 @@
 </div>
 <div class="content">
     <button onclick="window.location.href='/'">Homepage</button>
-    <h3>Commands file: <span style="color: #FFA400">{{ commands_file }}</span></h3>
-    <button onclick="window.location.href='/select-commands-file'">Select a different commands file</button>
     <h4>Type <span style="color: #FFA400">"{target}"</span> anywhere in the input to visualise the command!</h4>
     <h4>Some examples are: "sslscan {target}:443" Or "curl -L https://{target}/"!</h4>
-    <h4></h4>
     <form action="/add-commands" method="POST">
         <input type="text" id="command-input" name="command" style="width: 30%; margin-top: 10px;">
         <button type="submit">Submit</button>
@@ -38,7 +35,7 @@
         $(document).ready(function () {
             $('#command-input').on('input', function () {
                 var inputText = $(this).val();
-                var targetValue = '{{ config[0]["targets"].split(",")[0].strip() }}';
+                var targetValue = '{{ config["targets"].split(",")[0].strip() }}';
                 var updatedText = inputText.replace('{target}', targetValue);
                 $('#command-display').html('The command will be run exactly as:<br>' + updatedText);
             });

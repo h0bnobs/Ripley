@@ -49,11 +49,11 @@ CREATE TABLE IF NOT EXISTS config
     ping_method             TEXT,
     config_filepath         TEXT,
     ffuf_delay              TEXT,
-    extra_commands_file     TEXT,
     ffuf_subdomain_wordlist TEXT,
     ffuf_webpage_wordlist   TEXT,
     disable_chatgpt_api     TEXT,
     enable_ffuf             TEXT,
     verbose                 TEXT,
-    openai_api_key          TEXT
+    openai_api_key          TEXT,
+    extra_commands          TEXT
 );

@@ -204,4 +204,10 @@
 - Removed the SQLite db file from the repo.
 - Removed `is_wordpress_site` from `utils.py` and instead let `run_wpscan` check this instead. Also found a bug and fixed the method so that it works properly.
 - Added `default_extra_commands.txt`
-- 
+
+### Saturday 15th March
+15/03/25 02:05pm
+- Removed `extra_commands_file` from the config and the database.
+  - This entire feature now runs off `extra_commands` in the config.
+  - Fixed all logic relating to this.
+- Changed all instances of `session['config']` in `flask_app.py` from a list of 1 dict element to a dict.

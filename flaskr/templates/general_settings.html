@@ -7,9 +7,6 @@
     <link rel="stylesheet" href="../static/style/basic_style.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="../static/js/index.js"></script>
-    <script>
-        var disableChatGPTApi = {{ session['config'][0]['disable_chatgpt_api'] | tojson }};
-    </script>
 </head>
 <body>
     <div class="vertical-bar">
@@ -36,33 +33,33 @@
 
         <form action="/update-config" method="POST">
             <!-- textarea for targets -->
-            <textarea id="targets" name="targets" placeholder="Example: 192.168.1.1-192.168.1.4, 192.168.1.0/24, example.com" style="display: inline;">{% for entry in session['config'] %}{{ entry['targets'] }}{% if not loop.last %},{% endif %}{% endfor %}</textarea>            <br>
+            <textarea id="targets" name="targets" placeholder="Example: 192.168.1.1-192.168.1.4, 192.168.1.0/24, example.com" style="display: inline;">{{ session['config']['targets'] }}</textarea>
+            <br>
 
             <!-- textarea for config -->
             <textarea id="config" name="config">{
-    {% for entry in session['config'] %}"config_filepath": "{{ entry['config_filepath'] }}",
-    "ffuf_delay": "{{ entry['ffuf_delay'] }}",
-    "extra_commands_file": "{{ entry['extra_commands_file'] }}",
-    "ffuf_subdomain_wordlist": "{{ entry['ffuf_subdomain_wordlist'] }}",
-    "ffuf_webpage_wordlist": "{{ entry['ffuf_webpage_wordlist'] }}",
-    "disable_chatgpt_api": "{{ entry['disable_chatgpt_api'] }}",
-    "ports_to_scan": "{{ entry['ports_to_scan'] }}",
-    "scan_type": "{{ entry['scan_type'] }}",
-    "aggressive_scan": "{{ entry['aggressive_scan'] }}",
-    "scan_speed": "{{ entry['scan_speed'] }}",
-    "os_detection": "{{ entry['os_detection'] }}",
-    "ping_hosts": "{{ entry['ping_hosts'] }}",
-    "ping_methods": "{{ entry['ping_methods'] }}",
-    "host_timeout": "{{ entry['host_timeout'] }}",
-    "enable_ffuf": "{{ entry['enable_ffuf'] }}",
-    "verbose": "{{ entry['verbose'] }}",
-    "openai_api_key": "{{ entry['openai_api_key'] }}"{% if not loop.last %},{% endif %}{% endfor %}
-}
-            </textarea>
+    "config_filepath": "{{ session['config']['config_filepath'] }}",
+    "ffuf_delay": "{{ session['config']['ffuf_delay'] }}",
+    "ffuf_subdomain_wordlist": "{{ session['config']['ffuf_subdomain_wordlist'] }}",
+    "ffuf_webpage_wordlist": "{{ session['config']['ffuf_webpage_wordlist'] }}",
+    "disable_chatgpt_api": "{{ session['config']['disable_chatgpt_api'] }}",
+    "ports_to_scan": "{{ session['config']['ports_to_scan'] }}",
+    "scan_type": "{{ session['config']['scan_type'] }}",
+    "aggressive_scan": "{{ session['config']['aggressive_scan'] }}",
+    "scan_speed": "{{ session['config']['scan_speed'] }}",
+    "os_detection": "{{ session['config']['os_detection'] }}",
+    "ping_hosts": "{{ session['config']['ping_hosts'] }}",
+    "ping_methods": "{{ session['config']['ping_methods'] }}",
+    "host_timeout": "{{ session['config']['host_timeout'] }}",
+    "enable_ffuf": "{{ session['config']['enable_ffuf'] }}",
+    "verbose": "{{ session['config']['verbose'] }}",
+    "openai_api_key": "{{ session['config']['openai_api_key'] }}",
+    "extra_commands": "{{ session['config']['extra_commands'] }}"
+}</textarea>
             <br>
             <label for="verbose" style="width: auto;" class="form-label">Print output to terminal during scan</label>
             <div class="verbose_div">
-                <input type="checkbox" id="verbose" name="verbose" value="True" {% if session['config'][0]['verbose'] == 'True' %}checked{% endif %}>
+                <input type="checkbox" id="verbose" name="verbose" value="True" {% if session['config']['verbose'] == 'True' %}checked{% endif %}>
             </div>
             <br>
             <!-- update config button -->
@@ -80,28 +77,25 @@
         <!-- run button -->
         <form action="/running" method="POST">
             <input type="hidden" name="running" value='{
-            {% for entry in session['config'] %}
-            "targets": "{{ entry['targets'] }}",
-            "config_filepath": "{{ entry['config_filepath'] }}",
-            "ffuf_delay": "{{ entry['ffuf_delay'] }}",
-            "extra_commands_file": "{{ entry['extra_commands_file'] }}",
-            "ffuf_subdomain_wordlist": "{{ entry['ffuf_subdomain_wordlist'] }}",
-            "ffuf_webpage_wordlist": "{{ entry['ffuf_webpage_wordlist'] }}",
-            "disable_chatgpt_api": "{{ entry['disable_chatgpt_api'] }}",
-            "ports_to_scan": "{{ entry['ports_to_scan'] }}",
-            "scan_type": "{{ entry['scan_type'] }}"
-            "aggressive_scan": "{{ entry['aggressive_scan'] }}",
-            "scan_speed": "{{ entry['scan_speed'] }}",
-            "os_detection": "{{ entry['os_detection'] }}",
-            "ping_hosts": "{{ entry['ping_hosts'] }}",
-            "ping_methods": "{{ entry['ping_methods'] }}",
-            "host_timeout": "{{ entry['host_timeout'] }}",
-            "enable_ffuf": "{{ entry['enable_ffuf'] }}",
-            "verbose": "{{ entry['verbose'] }}",
-            "openai_api_key": "{{ entry['openai_api_key'] }}"
-            {% if not loop.last %},{% endif %}
-            {% endfor %}
-            }'>
+    "targets": "{{ session['config']['targets'] }}",
+    "config_filepath": "{{ session['config']['config_filepath'] }}",
+    "ffuf_delay": "{{ session['config']['ffuf_delay'] }}",
+    "ffuf_subdomain_wordlist": "{{ session['config']['ffuf_subdomain_wordlist'] }}",
+    "ffuf_webpage_wordlist": "{{ session['config']['ffuf_webpage_wordlist'] }}",
+    "disable_chatgpt_api": "{{ session['config']['disable_chatgpt_api'] }}",
+    "ports_to_scan": "{{ session['config']['ports_to_scan'] }}",
+    "scan_type": "{{ session['config']['scan_type'] }}",
+    "aggressive_scan": "{{ session['config']['aggressive_scan'] }}",
+    "scan_speed": "{{ session['config']['scan_speed'] }}",
+    "os_detection": "{{ session['config']['os_detection'] }}",
+    "ping_hosts": "{{ session['config']['ping_hosts'] }}",
+    "ping_methods": "{{ session['config']['ping_methods'] }}",
+    "host_timeout": "{{ session['config']['host_timeout'] }}",
+    "enable_ffuf": "{{ session['config']['enable_ffuf'] }}",
+    "verbose": "{{ session['config']['verbose'] }}",
+    "openai_api_key": "{{ session['config']['openai_api_key'] }}",
+    "extra_commands": "{{ session['config']['extra_commands'] }}"
+}'>
             <button class="btn_margin" type="submit">Run Ripley</button>
         </form>
 

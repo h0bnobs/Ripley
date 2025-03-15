@@ -2,13 +2,12 @@
     "targets": "www.google.co.uk",
     "nmap_parameters": "",
     "config_filepath": "",
-    "ffuf_delay": "0.2",
-    "extra_commands_file": "",
+    "ffuf_delay": "0.1",
     "ffuf_subdomain_wordlist": "",
     "ffuf_webpage_wordlist": "",
     "disable_chatgpt_api": "true",
     "ports_to_scan": "",
-    "scan_type": "SYN",
+    "scan_type": "TCP",
     "aggressive_scan": "False",
     "scan_speed": "3",
     "os_detection": "False",
@@ -17,5 +16,6 @@
     "host_timeout": "",
     "enable_ffuf": "True",
     "verbose": "True",
-    "openai_api_key": ""
+    "openai_api_key": "",
+    "extra_commands": ""
 }
