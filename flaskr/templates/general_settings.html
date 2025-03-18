@@ -22,7 +22,6 @@
         <h2>View and edit current config that the tool will use:</h2>
         <!-- hidden input for full_target_string -->
         <!-- <input type="hidden" id="full_target_string" name="full_target_string" value="{{ full_target_string }}"> -->
-        <p>{{ session['config'] }}</p>
         <!-- upload a file for targets -->
         <form id="upload-form" action="/upload-targets-file" method="POST" enctype="multipart/form-data">
             <!-- label acting as the visible "button" -->
@@ -34,28 +33,6 @@
         <form action="/update-config" method="POST">
             <!-- textarea for targets -->
             <textarea id="targets" name="targets" placeholder="Example: 192.168.1.1-192.168.1.4, 192.168.1.0/24, example.com" style="display: inline;">{{ session['config']['targets'] }}</textarea>
-            <br>
-
-            <!-- textarea for config -->
-            <textarea id="config" name="config">{
-    "config_filepath": "{{ session['config']['config_filepath'] }}",
-    "ffuf_delay": "{{ session['config']['ffuf_delay'] }}",
-    "ffuf_subdomain_wordlist": "{{ session['config']['ffuf_subdomain_wordlist'] }}",
-    "ffuf_webpage_wordlist": "{{ session['config']['ffuf_webpage_wordlist'] }}",
-    "disable_chatgpt_api": "{{ session['config']['disable_chatgpt_api'] }}",
-    "ports_to_scan": "{{ session['config']['ports_to_scan'] }}",
-    "scan_type": "{{ session['config']['scan_type'] }}",
-    "aggressive_scan": "{{ session['config']['aggressive_scan'] }}",
-    "scan_speed": "{{ session['config']['scan_speed'] }}",
-    "os_detection": "{{ session['config']['os_detection'] }}",
-    "ping_hosts": "{{ session['config']['ping_hosts'] }}",
-    "ping_methods": "{{ session['config']['ping_methods'] }}",
-    "host_timeout": "{{ session['config']['host_timeout'] }}",
-    "enable_ffuf": "{{ session['config']['enable_ffuf'] }}",
-    "verbose": "{{ session['config']['verbose'] }}",
-    "openai_api_key": "{{ session['config']['openai_api_key'] }}",
-    "extra_commands": "{{ session['config']['extra_commands'] }}"
-}</textarea>
             <br>
             <label for="verbose" style="width: auto;" class="form-label">Print output to terminal during scan</label>
             <div class="verbose_div">
@@ -76,26 +53,6 @@
 
         <!-- run button -->
         <form action="/running" method="POST">
-            <input type="hidden" name="running" value='{
-    "targets": "{{ session['config']['targets'] }}",
-    "config_filepath": "{{ session['config']['config_filepath'] }}",
-    "ffuf_delay": "{{ session['config']['ffuf_delay'] }}",
-    "ffuf_subdomain_wordlist": "{{ session['config']['ffuf_subdomain_wordlist'] }}",
-    "ffuf_webpage_wordlist": "{{ session['config']['ffuf_webpage_wordlist'] }}",
-    "disable_chatgpt_api": "{{ session['config']['disable_chatgpt_api'] }}",
-    "ports_to_scan": "{{ session['config']['ports_to_scan'] }}",
-    "scan_type": "{{ session['config']['scan_type'] }}",
-    "aggressive_scan": "{{ session['config']['aggressive_scan'] }}",
-    "scan_speed": "{{ session['config']['scan_speed'] }}",
-    "os_detection": "{{ session['config']['os_detection'] }}",
-    "ping_hosts": "{{ session['config']['ping_hosts'] }}",
-    "ping_methods": "{{ session['config']['ping_methods'] }}",
-    "host_timeout": "{{ session['config']['host_timeout'] }}",
-    "enable_ffuf": "{{ session['config']['enable_ffuf'] }}",
-    "verbose": "{{ session['config']['verbose'] }}",
-    "openai_api_key": "{{ session['config']['openai_api_key'] }}",
-    "extra_commands": "{{ session['config']['extra_commands'] }}"
-}'>
             <button class="btn_margin" type="submit">Run Ripley</button>
         </form>
 

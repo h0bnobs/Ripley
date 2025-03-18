@@ -317,7 +317,7 @@ def create_app(test_config=None) -> Flask:
 
         # if the request is coming from /general-settings:
         if referer and 'general-settings' in referer:
-            new_config = json.loads(request.form['config'])
+            new_config = session['config']
 
             # print(request.form)
             targets = request.form['targets']
