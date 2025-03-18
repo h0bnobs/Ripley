@@ -23,6 +23,14 @@
     <p>{{ config }}</p>
 
     <form action="/update-config" method="POST" enctype="multipart/form-data">
+      <label for="config_filepath" class="form-label">Edit config filepath:</label>
+      <div class="config_filepath_div">
+        <input type="text" id="config_filepath" style="height: 18px; margin-left: 2.5px; width: 350px;" name="config_filepath" value="{{ config['config_filepath'] }}">
+      </div>
+      <p id="config_filepath_warning">
+        Warning if you have changed this to a second valid JSON file in the root directory, the current settings you have set will override into this new config file when the tool is run!
+      </p>
+      <br>
       <label for="chatgpt_api_call" class="form-label">ChatGPT help</label>
       <div class="chatgpt_api_call_div">
         <input type="checkbox" id="chatgpt_api_call" name="chatgpt_api_call" value="True" {% if config['disable_chatgpt_api'] == 'false' %}checked{% endif %}>

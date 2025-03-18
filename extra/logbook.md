@@ -211,3 +211,10 @@
   - This entire feature now runs off `extra_commands` in the config.
   - Fixed all logic relating to this.
 - Changed all instances of `session['config']` in `flask_app.py` from a list of 1 dict element to a dict.
+
+### Tuesday 18th March
+18/03/25 03:05pm
+- Changed the `session['scan_results_file']` and `session['scan_result_file']` to instead store the filepath of a txt file that holds the locations of all temp JSON files with the results.
+- Fixed the `scan_counter` logic.
+- Fixed `get_screenshot()` not working when run as root.
+- 

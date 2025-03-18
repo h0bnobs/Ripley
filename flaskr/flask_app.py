@@ -401,6 +401,10 @@ def create_app(test_config=None) -> Flask:
                 old_config['enable_ffuf'] = 'True'
             else:
                 old_config['enable_ffuf'] = 'False'
+            if 'config_filepath' in values:
+                old_config['config_filepath'] = values['config_filepath']
+            else:
+                old_config['config_filepath'] = ''
             old_config['ffuf_delay'] = values['ffuf_delay']
             update_config_table(old_config)
             update_config_json_file()
@@ -419,6 +423,9 @@ def create_app(test_config=None) -> Flask:
             return "No result to display!"
 
         with open(result, 'r') as f:
+            temp_file = f.read().strip() #temp_file = json file
+
+        with open(temp_file, 'r') as f:
             parsed_json = json.load(f)
 
         return render_template('single_target_result.html', target=parsed_json["target"], result=parsed_json)
@@ -430,12 +437,15 @@ def create_app(test_config=None) -> Flask:
         :return: The render template of the multiple targets html file with the json data to be displayed.
         """
         # get the results from the session
-        results_files = session.get('scan_results_files')
-        if not results_files:
+        results_file = session.get('scan_results_file')
+        if not results_file:
             return "No results to display!"
 
         results = {}
-        for file_path in results_files:
+        with open(results_file, 'r') as f:
+            temp_files = [line.strip() for line in f.readlines()]
+
+        for file_path in temp_files:
             with open(file_path, 'r') as f:
                 result_data = json.load(f)
                 target = result_data['target']
@@ -461,9 +471,9 @@ def create_app(test_config=None) -> Flask:
         full_target_list = parse_targets(unparsed_targets)
         if len(full_target_list) > 1:  # multiple targets
             start = time.time()
-            results_files = run_on_multiple_targets(full_target_list, config)
+            results_file = run_on_multiple_targets(full_target_list, config)
             print(f'scan took {time.time() - start} seconds')
-            session['scan_results_files'] = results_files  # stores list of file paths in session
+            session['scan_results_file'] = results_file  # stores list of file paths in session
             return redirect(url_for('multiple_results'))
         else:  # single target
             start = time.time()

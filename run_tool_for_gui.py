@@ -198,20 +198,21 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
     final_str = ""
     if 'security_headers' in results and isinstance(results['security_headers'], dict):
         for header, value in results['security_headers'].items():
-            if value != "":
+            if value != "": #if there was a match for the headers we were looking for and the headers we found
                 final_str += f"{header}: {value}\n"
         final_str += "\n"
         for header, value in results['security_headers'].items():
-            if value == "":
+            if value == "": #if there wasnt a match
                 final_str += f"{header}: \n"
         results['security_headers'] = final_str
 
-    print(f'{results["target"]}: {results["extra_commands_output"]}')
     # Increment the counter and print the current count
     with counter_lock:
         scan_counter += 1
         print(f"Completed {target}: {scan_counter}/{total_scans}")
-
+        if scan_counter == total_scans:
+            scan_counter = 0
+            total_scans = 0
     return results
 
 
@@ -250,12 +251,12 @@ def save_to_db(db, results: dict, extra_commands: list[str]=None) -> None:
         db.commit()
 
 
-def run_on_multiple_targets(target_list: List[str], config: Dict) -> List[str]:
+def run_on_multiple_targets(target_list: List[str], config: Dict) -> str:
     """
     Run the tool on multiple targets.
     :param target_list: List of targets
     :param config: The configuration file as a dictionary.
-    :return: List of file paths to the results.
+    :return: The file path to the .txt file containing paths to the results.
     """
     app = current_app._get_current_object()
 
@@ -275,14 +276,19 @@ def run_on_multiple_targets(target_list: List[str], config: Dict) -> List[str]:
             results = {k: (v.stdout if isinstance(v, CompletedProcess) else v) for k, v in results.items()}
             extra_commands: list = config['extra_commands'].split(', ')
             save_to_db(get_db(), results, extra_commands=extra_commands)
-
-            #from pprint import pprint
-            #pprint({k: (v, type(v)) for k, v in results.items() if not isinstance(v, str)})
             return save_scan_results_to_tempfile(results)
 
     # scan multiple targets concurrently
     with concurrent.futures.ThreadPoolExecutor(max_workers=(os.cpu_count() or 1) + 2) as executor:
-        return list(executor.map(process_target, target_list))
+        temp_file_paths = list(executor.map(process_target, target_list))
+
+    # a .txt file to store all temp file paths
+    temp_file_list_path = 'flaskr/static/temp/temp_file_paths.txt'
+    with open(temp_file_list_path, 'w') as f:
+        for path in temp_file_paths:
+            f.write(f"{path}\n")
+
+    return temp_file_list_path
 
 
 def run_on_single_target(target_list: List[str], config: Dict) -> str:
@@ -304,4 +310,11 @@ def run_on_single_target(target_list: List[str], config: Dict) -> str:
     extra_commands: list = config['extra_commands'].split(', ')
     save_to_db(get_db(), results, extra_commands=extra_commands)
     run_command_no_output(f'rm flaskr/static/temp/nmap-{target}.xml')
-    return save_scan_results_to_tempfile(results)
+    temp_file_path = save_scan_results_to_tempfile(results)
+
+    # a .txt file to store the temp file path
+    temp_file_list_path = 'flaskr/static/temp/temp_file_path.txt'
+    with open(temp_file_list_path, 'w') as f:
+        f.write(f"{temp_file_path}\n")
+
+    return temp_file_list_path

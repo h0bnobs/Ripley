@@ -1,85 +1,83 @@
 $(document).ready(function () {
-  // Hide "needs-saving" initially.
-  $('#needs-saving').hide();
+  const $needsSaving = $('#needs-saving').hide();
+  const $chatGPTCall = $('#chatgpt_api_call');
+  const $apiKeyInput = $('#openai_api_key');
+  const $configFilepathInput = $('#config_filepath');
+  const $chatGPTWarning = $('#chatgpt_api_call_warning');
+  const $configWarning = $('#config_filepath_warning');
+  const $enableFfuf = $('#enable_ffuf');
+  const $ffufOptions = $('#ffuf_delay_div, #ffuf_wordlists');
 
-  // Store original values.
-  var originalApiKey = $('#openai_api_key').val();
-  var originalChatGPT = $('#chatgpt_api_call').is(':checked');
+  let originalApiKey = $apiKeyInput.val();
+  let originalChatGPT = $chatGPTCall.is(':checked');
+  let originalConfigFilepath = $configFilepathInput.val();
+  let enableFfufChecked = $enableFfuf.is(':checked');
 
-  // Function to toggle the ChatGPT API warning.
-  function toggleChatGPTWarning() {
-    var chatGPTChecked = $('#chatgpt_api_call').is(':checked');
-    var apiKeyEmpty = $('#openai_api_key').val().trim() === '';
-    if (chatGPTChecked && apiKeyEmpty) {
-      $('#chatgpt_api_call_warning').show();
-    } else {
-      $('#chatgpt_api_call_warning').hide();
-    }
+  function toggleElement($element, condition) {
+    $element.toggle(condition);
   }
 
-  // Initialize warning on page load.
-  toggleChatGPTWarning();
+  function checkChanges(originalValue, newValue) {
+    toggleElement($needsSaving, originalValue !== newValue);
+  }
 
-  // Handle ffuf delay and wordlists visibility.
-  var enableFfuf = $('#enable_ffuf').is(':checked');
-  $('#ffuf_delay_div, #ffuf_wordlists').css('display', enableFfuf ? 'block' : 'none');
+  function toggleChatGPTWarning() {
+    toggleElement($chatGPTWarning, $chatGPTCall.is(':checked') && !$apiKeyInput.val().trim());
+  }
 
-  // Event listener for ChatGPT checkbox.
-  $('#chatgpt_api_call').on('change', function () {
-    toggleChatGPTWarning();
-    var newChatGPT = $('#chatgpt_api_call').is(':checked');
-    if (newChatGPT !== originalChatGPT) {
-      $('#needs-saving').show();
-    } else {
-      $('#needs-saving').hide();
-    }
-  });
+  function toggleConfigFilepathWarning() {
+    toggleElement($configWarning, $configFilepathInput.val() !== originalConfigFilepath);
+  }
 
-  // Event listener for OpenAI API key textarea.
-  $('#openai_api_key').on('input', function () {
-    toggleChatGPTWarning();
-    var newApiKey = $('#openai_api_key').val();
-    if (newApiKey !== originalApiKey) {
-      $('#needs-saving').show();
-    } else {
-      $('#needs-saving').hide();
-    }
-  });
+  function toggleFfufOptions() {
+    $ffufOptions.css('display', $enableFfuf.is(':checked') ? 'block' : 'none');
+  }
 
-  // Event listener for FFUF checkbox.
-  $('#enable_ffuf').on('change', function () {
-    if (this.checked !== enableFfuf) {
-      $('#needs-saving').show();
-      $('#ffuf_delay_div, #ffuf_wordlists').css('display', 'block');
-    } else {
-      $('#needs-saving').hide();
-      $('#ffuf_delay_div, #ffuf_wordlists').css('display', 'none');
-    }
-  });
-
-  // Function for file upload.
-  function uploadFile(inputId, formId, displayId) {
-    var fileInput = document.getElementById(inputId);
-    var formData = new FormData();
+  function uploadFile(inputId, formId) {
+    let fileInput = document.getElementById(inputId);
+    let formData = new FormData();
     formData.append("file", fileInput.files[0]);
+
     $.ajax({
       url: $('#' + formId).attr('action'),
       type: 'POST',
       data: formData,
       processData: false,
       contentType: false,
-      success: function (response) {
+      success: function () {
         window.location.href = '/advanced-settings';
       }
     });
   }
 
-  // Event listeners for file inputs.
+  toggleChatGPTWarning();
+  toggleConfigFilepathWarning();
+  toggleFfufOptions();
+
+  $chatGPTCall.on('change', function () {
+    toggleChatGPTWarning();
+    checkChanges(originalChatGPT, $(this).is(':checked'));
+  });
+
+  $apiKeyInput.on('input', function () {
+    toggleChatGPTWarning();
+    checkChanges(originalApiKey, $(this).val());
+  });
+
+  $enableFfuf.on('change', function () {
+    toggleFfufOptions();
+    checkChanges(enableFfufChecked, $(this).is(':checked'));
+  });
+
+  $configFilepathInput.on('input', function () {
+    toggleConfigFilepathWarning();
+  });
+
   $('#subdomain-file').on('change', function () {
-    uploadFile('subdomain-file', 'upload-subdomain-form', 'subdomain_wordlist_display');
+    uploadFile('subdomain-file', 'upload-subdomain-form');
   });
 
   $('#webpage-file').on('change', function () {
-    uploadFile('webpage-file', 'upload-webpage-form', 'webpage_wordlist_display');
+    uploadFile('webpage-file', 'upload-webpage-form');
   });
 });

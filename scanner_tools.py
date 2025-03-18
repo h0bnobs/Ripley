@@ -190,11 +190,18 @@ def get_screenshot(target: str, verbose: str) -> str:
             chrome_options.add_argument("--headless")
             chrome_options.add_argument("--no-sandbox")
             chrome_options.add_argument("--disable-dev-shm-usage")
+
+            # the following are a fix for when the proj is run as root
+            chrome_options.add_argument("--disable-gpu")
+            chrome_options.add_argument("--disable-software-rasterizer")
+            chrome_options.add_argument("--remote-debugging-port=9222")
+            chrome_options.add_argument("--disable-setuid-sandbox")
+
             chromedriver = webdriver.Chrome(options=chrome_options)
             chromedriver.set_window_size(1500, 1080)
             chromedriver.set_page_load_timeout(10)
             chromedriver.get(url)
-            time.sleep(1)
+            time.sleep(0.2)
             screenshot_path = f'output/{target}.png'
             chromedriver.save_screenshot(screenshot_path)
             break
@@ -472,6 +479,8 @@ def check_security_headers(target: str) -> dict[str, str]:
     :return: A dictionary with the security headers and their values.
     """
     response = requests.get(f'https://{target}')
+    if response.status_code != 200:
+        response = requests.get(f'http://{target}')
     security_headers = {
         "Server": "",
         "X-Powered-By": "",
