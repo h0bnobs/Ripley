@@ -217,4 +217,8 @@
 - Changed the `session['scan_results_file']` and `session['scan_result_file']` to instead store the filepath of a txt file that holds the locations of all temp JSON files with the results.
 - Fixed the `scan_counter` logic.
 - Fixed `get_screenshot()` not working when run as root.
-- 
+
+### Wednesday 19th March
+19/03/25 06:35pm
+- Added `chatgpt_model` option to the config.
+- Removed `output` folder and so all screenshots are saved in `flaskr/static/screenshots`.

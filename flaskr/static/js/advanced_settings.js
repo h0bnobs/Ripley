@@ -7,11 +7,13 @@ $(document).ready(function () {
   const $configWarning = $('#config_filepath_warning');
   const $enableFfuf = $('#enable_ffuf');
   const $ffufOptions = $('#ffuf_delay_div, #ffuf_wordlists');
+  const $chatgptModel = $('#chatgpt_model');
 
   let originalApiKey = $apiKeyInput.val();
   let originalChatGPT = $chatGPTCall.is(':checked');
   let originalConfigFilepath = $configFilepathInput.val();
   let enableFfufChecked = $enableFfuf.is(':checked');
+  let originalChatGPTModel = $chatgptModel.val();
 
   function toggleElement($element, condition) {
     $element.toggle(condition);
@@ -57,6 +59,10 @@ $(document).ready(function () {
   $chatGPTCall.on('change', function () {
     toggleChatGPTWarning();
     checkChanges(originalChatGPT, $(this).is(':checked'));
+  });
+
+  $chatgptModel.on('change', function () {
+    checkChanges(originalChatGPTModel, $(this).val());
   });
 
   $apiKeyInput.on('input', function () {

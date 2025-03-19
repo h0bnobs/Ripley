@@ -405,6 +405,7 @@ def create_app(test_config=None) -> Flask:
                 old_config['config_filepath'] = values['config_filepath']
             else:
                 old_config['config_filepath'] = ''
+            old_config['chatgpt_model'] = values['chatgpt_model']
             old_config['ffuf_delay'] = values['ffuf_delay']
             update_config_table(old_config)
             update_config_json_file()
@@ -472,7 +473,7 @@ def create_app(test_config=None) -> Flask:
         if len(full_target_list) > 1:  # multiple targets
             start = time.time()
             results_file = run_on_multiple_targets(full_target_list, config)
-            print(f'scan took {time.time() - start} seconds')
+            print(f'scan took {round(time.time() - start, 2)} seconds')
             session['scan_results_file'] = results_file  # stores list of file paths in session
             return redirect(url_for('multiple_results'))
         else:  # single target
@@ -600,8 +601,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     targets, config_filepath, ffuf_delay,  
                     ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
                     scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout,
-                    enable_ffuf, verbose, openai_api_key, extra_commands
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    enable_ffuf, verbose, openai_api_key, extra_commands, chatgpt_model
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     config.get('targets', ''),
@@ -621,7 +622,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     config.get('enable_ffuf', ''),
                     config.get('verbose', ''),
                     config.get('openai_api_key', ''),
-                    config.get('extra_commands', '')
+                    config.get('extra_commands', ''),
+                    config.get('chatgpt_model', '')
                 )
             )
         else:
@@ -645,7 +647,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     enable_ffuf = ?,
                     verbose = ?,
                     openai_api_key = ?,
-                    extra_commands = ?
+                    extra_commands = ?,
+                    chatgpt_model = ?
                 """,
                 (
                     config.get('targets', ''),
@@ -665,7 +668,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     config.get('enable_ffuf', ''),
                     config.get('verbose', ''),
                     config.get('openai_api_key', ''),
-                    config.get('extra_commands', '')
+                    config.get('extra_commands', ''),
+                    config.get('chatgpt_model', '')
                 )
             )
         db.commit()
@@ -754,7 +758,8 @@ def update_config_json_file():
             enable_ffuf,
             verbose,
             openai_api_key,
-            extra_commands
+            extra_commands,
+            chatgpt_model
         FROM config
         """
     )
@@ -781,7 +786,8 @@ def update_config_json_file():
             "enable_ffuf": row["enable_ffuf"],
             "verbose": row["verbose"],
             "openai_api_key": row["openai_api_key"],
-            "extra_commands": row["extra_commands"]
+            "extra_commands": row["extra_commands"],
+            "chatgpt_model": row["chatgpt_model"]
         })
         with open(config_data["config_filepath"], 'w') as file:
             json.dump(config_data, file, indent=4)
@@ -816,7 +822,8 @@ def update_config_table(config: dict):
             enable_ffuf = ?,
             verbose = ?,
             openai_api_key = ?,
-            extra_commands = ?
+            extra_commands = ?,
+            chatgpt_model = ?
         """,
         (
             config.get('targets', ''),
@@ -836,7 +843,8 @@ def update_config_table(config: dict):
             config.get('enable_ffuf', ''),
             config.get('verbose', ''),
             config.get('openai_api_key', ''),
-            config.get('extra_commands', '')
+            config.get('extra_commands', ''),
+            config.get('chatgpt_model', '')
         )
     )
     db.commit()

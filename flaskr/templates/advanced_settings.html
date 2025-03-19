@@ -35,6 +35,14 @@
         <input type="checkbox" id="chatgpt_api_call" name="chatgpt_api_call" value="True" {% if config['disable_chatgpt_api'] == 'false' %}checked{% endif %}>
       </div>
       <br>
+      <label for="chatgpt_model" class="form-label">ChatGPT model</label>
+      <div class="chatgpt_model_div">
+        <select id="chatgpt_model" name="chatgpt_model">
+          <option value="gpt-3.5-turbo" {% if config['chatgpt_model'] == 'gpt-3.5-turbo' %}selected{% endif %}>GPT-3.5 Turbo</option>
+          <option value="gpt-4" {% if config['chatgpt_model'] == 'gpt-4' %}selected{% endif %}>GPT-4</option>
+        </select>
+      </div>
+      <br>
       <label for="openai_api_key" class="form-label">OpenAI API Key</label>
       <div class="openai_api_key">
         <textarea id="openai_api_key" name="openai_api_key" style="width: 410px; height: 68px;" placeholder="OpenAI API Key.">{{ config['openai_api_key'] }}</textarea>

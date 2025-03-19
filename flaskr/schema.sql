@@ -55,5 +55,6 @@ CREATE TABLE IF NOT EXISTS config
     enable_ffuf             TEXT,
     verbose                 TEXT,
     openai_api_key          TEXT,
-    extra_commands          TEXT
+    extra_commands          TEXT,
+    chatgpt_model           TEXT
 );

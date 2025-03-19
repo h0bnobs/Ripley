@@ -34,20 +34,26 @@ def save_scan_results_to_tempfile(results: Dict) -> str:
         json.dump(results, f)
     return temp_file.name
 
-def start_msf_rpc(msf_password: str):
+def start_msf_rpc(msf_password: str, verbose: str):
     """
     Start the Metasploit RPC server.
     :param msf_password: The default msfrpcd password.
+    :param verbose: Whether to print the output to the terminal.
     :return: The process object.
     """
     # msfrpcd -P yourpassword -p 55553 -S
-    process = subprocess.Popen(['msfrpcd', '-P', msf_password, '-p', '55553', '-S'])
-    time.sleep(2)
+    if verbose == 'True':
+        process = subprocess.Popen(['msfrpcd', '-P', msf_password, '-p', '55553', '-S'])
+    else:
+        process = subprocess.Popen(['msfrpcd', '-P', msf_password, '-p', '55553', '-S'], stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL)
+    time.sleep(0.5)
     return process
 
-def check_and_kill_msf_rpc():
+def check_and_kill_msf_rpc(verbose: str):
     """
     Check if msfrpcd is running and if it is, kills it.
+    :param verbose: Whether to print the output to the terminal.
     :return: None
     """
     result = subprocess.run(
@@ -58,7 +64,10 @@ def check_and_kill_msf_rpc():
         text=True,
     )
     t = result.stdout.split('\n')
-    subprocess.run('kill ' + t[0].split()[1], shell=True)
+    if verbose == 'True':
+        subprocess.run('kill ' + t[0].split()[1], shell=True)
+    else:
+        subprocess.run('kill ' + t[0].split()[1], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def process_extra_commands(target: str, extra_commands: str, verbose: str) -> List[str]:
     """
@@ -156,8 +165,6 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
                             results[key] = remove_ansi_escape_codes(results[key])
                         if key == 'screenshot':
                             if results[key]:
-                                os.makedirs('flaskr/static/screenshots', exist_ok=True)
-                                run_command_no_output(f'cp {results[key]} flaskr/static/screenshots/{target}.png')
                                 results[key] = f'static/screenshots/{target}.png'
                             else:
                                 results[key] = "[*] Couldn't get a screenshot of the target!"
@@ -188,7 +195,7 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
     # make chatgpt api call if enabled
     if config.get('disable_chatgpt_api', '').lower() != 'true':
         extra_commands_output = results.get('extra_commands_output')
-        results['ai_advice'] = make_chatgpt_api_call(results, config.get("openai_api_key"))
+        results['ai_advice'] = make_chatgpt_api_call(results, config.get('chatgpt_model'), config.get("openai_api_key"))
         if extra_commands_output is not None:
             results['extra_commands_output'] = extra_commands_output
     else:
@@ -260,8 +267,8 @@ def run_on_multiple_targets(target_list: List[str], config: Dict) -> str:
     """
     app = current_app._get_current_object()
 
-    check_and_kill_msf_rpc()
-    msf_process = start_msf_rpc('msf')
+    check_and_kill_msf_rpc(config['verbose'])
+    msf_process = start_msf_rpc('msf', config['verbose'])
     pid = msf_process.pid
     total_scans = len(target_list)
 
@@ -300,8 +307,8 @@ def run_on_single_target(target_list: List[str], config: Dict) -> str:
     """
     target = target_list[0]
 
-    check_and_kill_msf_rpc()
-    msf_process = start_msf_rpc('msf')
+    check_and_kill_msf_rpc(config['verbose'])
+    msf_process = start_msf_rpc('msf', config['verbose'])
     pid = msf_process.pid
 
     results = run_scans(target, config, pid, config['verbose'], len(target_list))

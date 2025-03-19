@@ -177,7 +177,6 @@ def get_screenshot(target: str, verbose: str) -> str:
     """
     if verbose == 'True':
         print(f'{COLOURS["warn"]} Getting screenshot! {COLOURS["end"]}')
-    os.makedirs("output", exist_ok=True)
     attempts = [
         f'https://{target}',
         f'http://{target}',
@@ -192,25 +191,26 @@ def get_screenshot(target: str, verbose: str) -> str:
             chrome_options.add_argument("--disable-dev-shm-usage")
 
             # the following are a fix for when the proj is run as root
-            chrome_options.add_argument("--disable-gpu")
-            chrome_options.add_argument("--disable-software-rasterizer")
-            chrome_options.add_argument("--remote-debugging-port=9222")
-            chrome_options.add_argument("--disable-setuid-sandbox")
+            if os.geteuid() == 0:
+                chrome_options.add_argument("--disable-gpu")
+                chrome_options.add_argument("--disable-software-rasterizer")
+                chrome_options.add_argument("--remote-debugging-port=9222")
+                chrome_options.add_argument("--disable-setuid-sandbox")
 
             chromedriver = webdriver.Chrome(options=chrome_options)
             chromedriver.set_window_size(1500, 1080)
             chromedriver.set_page_load_timeout(10)
             chromedriver.get(url)
             time.sleep(0.2)
-            screenshot_path = f'output/{target}.png'
+            screenshot_path = f'flaskr/static/screenshots/{target}.png'
             chromedriver.save_screenshot(screenshot_path)
+            chromedriver.quit()
             break
         except WebDriverException:
-            continue
-    chromedriver.quit()
+            return "WebDriverException, failed to get screenshot"
 
     if screenshot_path:
-        return find_full_filepath('output', f'{target}.png')
+        return find_full_filepath('flaskr/static/screenshots', f'{target}.png')
     else:
         return f"Could not connect to {target} using any protocol."
 
@@ -478,8 +478,9 @@ def check_security_headers(target: str) -> dict[str, str]:
     :param target: The target to check.
     :return: A dictionary with the security headers and their values.
     """
-    response = requests.get(f'https://{target}')
-    if response.status_code != 200:
+    try:
+        response = requests.get(f'https://{target}')
+    except:
         response = requests.get(f'http://{target}')
     security_headers = {
         "Server": "",
