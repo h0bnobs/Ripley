@@ -15,8 +15,10 @@ import json
 import os
 import re
 import time
+import psutil
 
 from flask import Flask, render_template, request, redirect, url_for, session, Response
+from libnmap.parser import NmapParser
 
 from flaskr.db import get_db, init_db
 from run_tool_for_gui import run_on_multiple_targets, run_on_single_target
@@ -310,111 +312,61 @@ def create_app(test_config=None) -> Flask:
     @app.post('/update-config')
     def update_config() -> Response | str:
         """
-        This endpoint is for updating the config. It can be called from the settings pages (general, port scanning, etc.).
-        :return: A redirect to the settings page from which the request was made, or an error page if something went wrong.
+        Update the configuration based on the settings page the request originated from.
+        Redirects back to the respective settings page after updating, or shows an error if something goes wrong.
         """
         referer = request.headers.get('Referer')
+        new_config = session.get('config', {}).copy()
 
-        # if the request is coming from /general-settings:
-        if referer and 'general-settings' in referer:
-            new_config = session['config']
+        if not referer:
+            return error("Invalid request source. Please try again!", url_for('port_scanning_settings'))
 
-            # print(request.form)
-            targets = request.form['targets']
-            new_config["targets"] = targets
+        # general
+        if 'general-settings' in referer:
+            new_config['targets'] = request.form.get('targets', '')
+            new_config['verbose'] = 'True' if 'verbose' in request.form else 'False'
 
-            if 'verbose' in request.form:
-                new_config["verbose"] = 'True'
-            else:
-                new_config["verbose"] = 'False'
-
-            # first update the config table
-            update_config_table(new_config)
-
-            # now we update config.json in the directory root
-            update_config_json_file()
-
-            # get the relevant data for the homepage and set the session variables for the general settings page
-            data = reload_homepage()
-            session['config'] = data["config"]
-            session['files_in_directory'] = data["files_in_directory"]
-
-            return redirect(url_for('general_settings'))
-
-        # if the request is coming from /port-scanning-settings:
-        if referer and 'port-scanning-settings' in referer:
+        # port scanning
+        elif 'port-scanning-settings' in referer:
             values = request.form.to_dict()
-            if 'ports_to_scan' in values:
-                if '\r\n' in values['ports_to_scan']:
-                    values['ports_to_scan'] = values['ports_to_scan'].replace('\r\n', ', ')
-            if 'host_timeout' in values:
-                if '\r\n' in values['host_timeout']:
-                    values['host_timeout'] = values['host_timeout'].replace('\r\n', ', ')
-            old_config = session['config']
-            if 'aggressive_scan' in values:
-                old_config['aggressive_scan'] = 'True'
-            elif 'aggressive_scan' not in values:
-                old_config['aggressive_scan'] = 'False'
-            if 'os_detection' in values:
-                old_config['os_detection'] = 'True'
-            elif 'os_detection' not in values:
-                old_config['os_detection'] = 'False'
-            for value in values:
-                if value != 'aggressive_scan' or value != 'os_detection':
-                    old_config[value] = values[value]
-            update_config_table(old_config)
-            update_config_json_file()
-            session['config'] = old_config  # Update session with new config
-            return redirect(url_for('port_scanning_settings'))
+            values['ports_to_scan'] = values.get('ports_to_scan', '').replace('\r\n', ', ')
+            values['host_timeout'] = values.get('host_timeout', '').replace('\r\n', ', ')
 
-        # if the request is coming from /host-discovery-settings:
-        if referer and 'host-discovery-settings' in referer:
-            values = request.form.to_dict()
-            old_config = session['config']
-            if 'ping_method' not in values:
-                old_config['ping_method'] = ''
-            if 'ping_hosts' in values:
-                old_config['ping_hosts'] = 'True'
-                if 'ping_method' in values:
-                    old_config['ping_method'] = values['ping_method']
-            elif 'ping_hosts' not in values:
-                old_config['ping_hosts'] = 'False'
-                old_config['ping_method'] = ''
-            update_config_table(old_config)
-            update_config_json_file()
-            session['config'] = old_config  # Update session with new config
-            return redirect(url_for('host_discovery_settings'))
+            new_config.update({
+                'aggressive_scan': 'True' if 'aggressive_scan' in values else 'False',
+                'os_detection': 'True' if 'os_detection' in values else 'False'
+            })
+            new_config.update({k: v for k, v in values.items() if k not in ['aggressive_scan', 'os_detection']})
 
-        # if the request is coming from /advanced-settings:
-        if referer and 'advanced-settings' in referer:
+        # dost discovery
+        elif 'host-discovery-settings' in referer:
             values = request.form.to_dict()
-            old_config = session['config']
-            if 'chatgpt_api_call' in values:
-                old_config['disable_chatgpt_api'] = 'false'
-            elif 'chatgpt_api_call' not in values:
-                old_config['disable_chatgpt_api'] = 'true'
-            if 'openai_api_key' in request.form:
-                old_config["openai_api_key"] = request.form['openai_api_key']
-            else:
-                old_config["openai_api_key"] = ""
-            if 'enable_ffuf' in values:
-                old_config['enable_ffuf'] = 'True'
-            else:
-                old_config['enable_ffuf'] = 'False'
-            if 'config_filepath' in values:
-                old_config['config_filepath'] = values['config_filepath']
-            else:
-                old_config['config_filepath'] = ''
-            old_config['chatgpt_model'] = values['chatgpt_model']
-            old_config['ffuf_delay'] = values['ffuf_delay']
-            update_config_table(old_config)
-            update_config_json_file()
-            session['config'] = old_config  # Update session with new config
-            return redirect(url_for('advanced_settings'))
+            new_config['ping_hosts'] = 'True' if 'ping_hosts' in values else 'False'
+            new_config['ping_method'] = values.get('ping_method', '') if 'ping_hosts' in values else ''
+
+        # advanced
+        elif 'advanced-settings' in referer:
+            values = request.form.to_dict()
+            new_config.update({
+                'disable_chatgpt_api': 'false' if 'chatgpt_api_call' in values else 'true',
+                'openai_api_key': values.get('openai_api_key', ''),
+                'enable_ffuf': 'True' if 'enable_ffuf' in values else 'False',
+                'ffuf_redirect': 'True' if 'ffuf_redirect' in values else 'False',
+                'config_filepath': values.get('config_filepath', ''),
+                'chatgpt_model': values.get('chatgpt_model', ''),
+                'ffuf_delay': values.get('ffuf_delay', '')
+            })
 
         else:
             return error("Something went wrong trying to update the config. Please try again!",
                          url_for('port_scanning_settings'))
+
+        # Update configuration and persist changes
+        update_config_table(new_config)
+        update_config_json_file()
+        session['config'] = new_config
+
+        return redirect(url_for(referer.split('/')[-1].replace('-', '_')))
 
     @app.route('/single-result')
     def single_result() -> str:
@@ -472,8 +424,10 @@ def create_app(test_config=None) -> Flask:
         full_target_list = parse_targets(unparsed_targets)
         if len(full_target_list) > 1:  # multiple targets
             start = time.time()
+            psutil.cpu_percent(interval=None)
             results_file = run_on_multiple_targets(full_target_list, config)
-            print(f'scan took {round(time.time() - start, 2)} seconds')
+            scan_time = round(time.time() - start, 2)
+            print(f'scan took {scan_time} seconds with an average CPU usage of {psutil.cpu_percent(interval=None)}%')
             session['scan_results_file'] = results_file  # stores list of file paths in session
             return redirect(url_for('multiple_results'))
         else:  # single target
@@ -482,6 +436,17 @@ def create_app(test_config=None) -> Flask:
             print(f'scan took {time.time() - start} seconds')
             session['scan_result_file'] = result_file
             return redirect(url_for('single_result'))
+
+    @app.route('/port-info', methods=['GET'])
+    def port_info() -> str:
+        """
+        The route for displaying port information.
+        :return: The render template of the port information html file.
+        """
+        port_data = get_interesting_ports()
+        sorted_ports = sorted(port_data.items(), key=lambda item: len(item[1]), reverse=True)
+        return render_template('port_info.html', port_data=sorted_ports)
+
 
     @app.route('/remove-extra-command', methods=['POST'])
     def remove_extra_command() -> Response:
@@ -601,8 +566,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     targets, config_filepath, ffuf_delay,  
                     ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
                     scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout,
-                    enable_ffuf, verbose, openai_api_key, extra_commands, chatgpt_model
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    enable_ffuf, verbose, openai_api_key, extra_commands, chatgpt_model, ffuf_redirect
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     config.get('targets', ''),
@@ -623,7 +588,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     config.get('verbose', ''),
                     config.get('openai_api_key', ''),
                     config.get('extra_commands', ''),
-                    config.get('chatgpt_model', '')
+                    config.get('chatgpt_model', ''),
+                    config.get('ffuf_redirect', '')
                 )
             )
         else:
@@ -648,7 +614,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     verbose = ?,
                     openai_api_key = ?,
                     extra_commands = ?,
-                    chatgpt_model = ?
+                    chatgpt_model = ?,
+                    ffuf_redirect = ?
                 """,
                 (
                     config.get('targets', ''),
@@ -669,7 +636,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     config.get('verbose', ''),
                     config.get('openai_api_key', ''),
                     config.get('extra_commands', ''),
-                    config.get('chatgpt_model', '')
+                    config.get('chatgpt_model', ''),
+                    config.get('ffuf_redirect', '')
                 )
             )
         db.commit()
@@ -759,7 +727,8 @@ def update_config_json_file():
             verbose,
             openai_api_key,
             extra_commands,
-            chatgpt_model
+            chatgpt_model,
+            ffuf_redirect
         FROM config
         """
     )
@@ -787,7 +756,8 @@ def update_config_json_file():
             "verbose": row["verbose"],
             "openai_api_key": row["openai_api_key"],
             "extra_commands": row["extra_commands"],
-            "chatgpt_model": row["chatgpt_model"]
+            "chatgpt_model": row["chatgpt_model"],
+            "ffuf_redirect": row["ffuf_redirect"]
         })
         with open(config_data["config_filepath"], 'w') as file:
             json.dump(config_data, file, indent=4)
@@ -823,7 +793,8 @@ def update_config_table(config: dict):
             verbose = ?,
             openai_api_key = ?,
             extra_commands = ?,
-            chatgpt_model = ?
+            chatgpt_model = ?,
+            ffuf_redirect = ?
         """,
         (
             config.get('targets', ''),
@@ -844,7 +815,8 @@ def update_config_table(config: dict):
             config.get('verbose', ''),
             config.get('openai_api_key', ''),
             config.get('extra_commands', ''),
-            config.get('chatgpt_model', '')
+            config.get('chatgpt_model', ''),
+            config.get('ffuf_redirect', '')
         )
     )
     db.commit()
@@ -915,3 +887,27 @@ def check_wordlists(config: dict):
     check_subdomain(subdomain_wordlist)
     directory_wordlist = config['ffuf_webpage_wordlist']
     check_directory(directory_wordlist)
+
+
+def get_interesting_ports() -> dict:
+    """
+    Looks in flaskr/static/temp for all nmap xml outputs and parses them looking for ports.
+    :returns: a dictionary where keys are port numbers and values are lists of hosts with those ports open.
+    """
+    port_dict = {}
+    xml_files = [f for f in os.listdir('flaskr/static/temp') if f.endswith('.xml') and f.startswith('nmap')]
+
+    for xml_file in xml_files:
+        report = NmapParser.parse_fromfile(f'flaskr/static/temp/{xml_file}')
+        for host in report.hosts:
+            host_ip = host.address
+            hostname = host.hostnames[0] if host.hostnames else ""
+            for service in host.services:
+                if service.open():
+                    port_number = service.port
+                    if port_number not in port_dict:
+                        port_dict[port_number] = []
+                    port_dict[port_number].append(host_ip)
+                    port_dict[port_number].append(hostname)
+
+    return port_dict

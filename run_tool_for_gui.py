@@ -145,13 +145,12 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
         with concurrent.futures.ThreadPoolExecutor() as executor:
             webpage_tasks = {
                 'ffuf_webpage': executor.submit(run_ffuf_webpage, target, config["ffuf_webpage_wordlist"],
-                                                config["enable_ffuf"], verbose, config["ffuf_delay"]),
+                                                config["enable_ffuf"], verbose, config["ffuf_redirect"], config["ffuf_delay"]),
                 'robots_output': executor.submit(get_robots_file, target, verbose),
                 'ffuf_subdomain': executor.submit(run_ffuf_subdomain,
                                                   target[4:] if target.startswith('www.') else target,
                                                   config["ffuf_subdomain_wordlist"],
-                                                  config["enable_ffuf"], verbose, config["ffuf_delay"]
-                                                  ),
+                                                  config["enable_ffuf"], verbose, config["ffuf_redirect"], config["ffuf_delay"]),
                 'screenshot': executor.submit(get_screenshot, target, verbose),
                 'wpscan': executor.submit(run_wpscan, target, verbose),
                 'security_headers': executor.submit(check_security_headers, target)
@@ -272,6 +271,12 @@ def run_on_multiple_targets(target_list: List[str], config: Dict) -> str:
     pid = msf_process.pid
     total_scans = len(target_list)
 
+    # clear temp dir
+    for filename in os.listdir('flaskr/static/temp'):
+        file_path = os.path.join('flaskr/static/temp', filename)
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            os.unlink(file_path)
+
     def process_target(target: str) -> str:
         """
         Process a single target.
@@ -286,7 +291,7 @@ def run_on_multiple_targets(target_list: List[str], config: Dict) -> str:
             return save_scan_results_to_tempfile(results)
 
     # scan multiple targets concurrently
-    with concurrent.futures.ThreadPoolExecutor(max_workers=(os.cpu_count() or 1) + 2) as executor:
+    with concurrent.futures.ThreadPoolExecutor() as executor:
         temp_file_paths = list(executor.map(process_target, target_list))
 
     # a .txt file to store all temp file paths
@@ -311,12 +316,18 @@ def run_on_single_target(target_list: List[str], config: Dict) -> str:
     msf_process = start_msf_rpc('msf', config['verbose'])
     pid = msf_process.pid
 
+    # clear temp dir
+    for filename in os.listdir('flaskr/static/temp'):
+        file_path = os.path.join('flaskr/static/temp', filename)
+        if os.path.isfile(file_path) or os.path.islink(file_path):
+            os.unlink(file_path)
+
     results = run_scans(target, config, pid, config['verbose'], len(target_list))
     results['smbclient_output'] = remove_ansi_escape_codes(results['smbclient_output'])
     results = {k: (v.stdout if isinstance(v, CompletedProcess) else v) for k, v in results.items()}
     extra_commands: list = config['extra_commands'].split(', ')
     save_to_db(get_db(), results, extra_commands=extra_commands)
-    run_command_no_output(f'rm flaskr/static/temp/nmap-{target}.xml')
+    #run_command_no_output(f'rm flaskr/static/temp/nmap-{target}.xml')
     temp_file_path = save_scan_results_to_tempfile(results)
 
     # a .txt file to store the temp file path

@@ -222,3 +222,10 @@
 19/03/25 06:35pm
 - Added `chatgpt_model` option to the config.
 - Removed `output` folder and so all screenshots are saved in `flaskr/static/screenshots`.
+
+### Friday 21st March
+21/03/25 10:00am
+- Added basic `port_info` to the results.
+- Added `ffuf_redirect` to the config and made the ffuf methods in `scanner_tools.py` more readable.
+- Made parts of `flask_app.py` more readable.
+- Changed `ThreadPoolExecutor` to use the default `max_workers` which is "min(32, os.cpu_count() + 4)".

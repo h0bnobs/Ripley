@@ -53,7 +53,8 @@ def get_metasploit_modules(target: str, pid: int, verbose: str) -> list[dict[str
             client = MsfRpcClient(msf_password, port=55553)
             return client
         except requests.exceptions.ConnectionError as e:
-            print(f"[!] metaploit connection error: {e}")
+            if verbose == 'True':
+                print(f"[!] metaploit connection error: {e}")
             return None
 
     def stop_msf_rpc(process):
@@ -69,7 +70,7 @@ def get_metasploit_modules(target: str, pid: int, verbose: str) -> list[dict[str
         :param client: The metasploit rpc client.
         :param product: Product name from the nmap scan.
         :param version: Version of the product from the nmap scan.
-        :return:
+        :return: A list of dictionaries containing the module information if they are found.
         """
         search_results = client.modules.search(product)
         return [result for result in search_results if any(isinstance(value, str) and version in value for value in result.values())]
@@ -376,74 +377,85 @@ def parse_nmap_settings(settings: dict, target: str, verbose: str) -> str:
     return command
 
 
-def run_ffuf_subdomain(target: str, wordlist_filepath: str, enable_ffuf: str, verbose: str, delay=0) -> str:
+def run_ffuf_subdomain(target: str, wordlist_filepath: str, enable_ffuf: str, verbose: str, ffuf_redirect: str,
+                       delay=0) -> str:
     """
     Runs ffuf to find subdomains. WARNING: remember to remove 'www.' from the target before running this function.
     :param target: The target to run ffuf on.
     :param wordlist_filepath: The path to the wordlist file.
     :param enable_ffuf: A string that is either 'True' or 'False' to enable or disable ffuf.
     :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
+    :param ffuf_redirect: A string that is either 'True' or 'False' to enable or disable ffuf redirection (-r flag).
     :param delay: An optional delay to add between requests.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
-    if enable_ffuf == 'True':
-        if verbose == 'True':
-            print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
-
-        if delay != 0:
-            command = (
-                f'ffuf -w {wordlist_filepath} '
-                f'-u https://FUZZ.{target} '
-                f'-H "Host: FUZZ.{target}" '
-                f'-fc 404,500,301 '
-                f'-p {delay}'
-            )
-        else:
-            command = (
-                f'ffuf -w {wordlist_filepath} '
-                f'-u https://FUZZ.{target} -H "Host: FUZZ.{target}" -fc 404,500,301'
-            )
-        result = run_command_with_output_after(command, verbose)
-        if isinstance(result, CalledProcessError):
-            result = "Error"
-        elif isinstance(result, CompletedProcess) and result.returncode == 0:
-            result = result.stdout
-        if verbose == 'True':
-            print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
-        return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
-    else:
+    if enable_ffuf != 'True':
         return "ffuf not enabled!"
 
+    if verbose == 'True':
+        print(f'{COLOURS["warn"]} Attempting to find subdomains for {target}! {COLOURS["end"]}')
 
-def run_ffuf_webpage(target: str, wordlist_filepath: str, enable_ffuf: str, verbose: str, delay = 0) -> str:
+    command = (
+        f'ffuf -w {wordlist_filepath} '
+        f'-u https://FUZZ.{target} '
+        f'-H "Host: FUZZ.{target}" '
+        f'-fc 404,500,301 '
+    )
+
+    if ffuf_redirect == 'True':
+        command += '-r '
+    if delay:
+        command += f'-p {delay} '
+    print(command.strip())
+    result = run_command_with_output_after(command.strip(), verbose)
+
+    if isinstance(result, CalledProcessError):
+        result = "Error"
+    elif isinstance(result, CompletedProcess) and result.returncode == 0:
+        result = result.stdout
+
+    if verbose == 'True':
+        print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
+
+    return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
+
+
+def run_ffuf_webpage(target: str, wordlist_filepath: str, enable_ffuf: str, verbose: str, ffuf_redirect: str,
+                     delay=0) -> str:
     """
     Runs ffuf to find webpages.
     :param target: The target to run ffuf on.
     :param wordlist_filepath: The path to the wordlist file.
     :param enable_ffuf: A string that is either 'True' or 'False' to enable or disable ffuf.
     :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
+    :param ffuf_redirect: A string that is either 'True' or 'False' to enable or disable ffuf redirection (-r flag).
     :param delay: An optional delay to add between requests.
     :return: The output of the ffuf tool as a string or a CalledProcessError.
     """
-    if enable_ffuf == 'True':
-        if verbose == 'True':
-            print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
-
-        if delay != 0:
-            command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -fc 404,500,301 -p {delay}'
-        else:
-            command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -fc 404,500,301'
-
-        result = run_command_with_output_after(command, verbose)
-        if isinstance(result, CalledProcessError):
-            result = "Error"
-        elif isinstance(result, CompletedProcess) and result.returncode == 0:
-            result = result.stdout
-        if verbose  == 'True':
-            print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
-        return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
-    else:
+    if enable_ffuf != 'True':
         return "ffuf not enabled!"
+
+    if verbose == 'True':
+        print(f'{COLOURS["warn"]} Starting ffuf webpage enumeration! {COLOURS["end"]}')
+
+    command = f'ffuf -w {wordlist_filepath} -u https://{target}/FUZZ -fc 404,500,301 '
+
+    if ffuf_redirect == 'True':
+        command += '-r '
+    if delay:
+        command += f'-p {delay} '
+    print(command.strip())
+    result = run_command_with_output_after(command.strip(), verbose)
+
+    if isinstance(result, CalledProcessError):
+        result = "Error"
+    elif isinstance(result, CompletedProcess) and result.returncode == 0:
+        result = result.stdout
+
+    if verbose == 'True':
+        print(f'{COLOURS["warn"]} End of ffuf webpage enumeration! {COLOURS["end"]}')
+
+    return f"Using wordlist: {wordlist_filepath}:\n\n{result}"
 
 
 def get_robots_file(target: str, verbose: str) -> str:

@@ -12,3 +12,4 @@ openai
 pymetasploit3
 aiohttp
 tiktoken
+psutil

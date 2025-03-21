@@ -2,3 +2,6 @@ instance
 default_extra_commands.txt
 scripts/http-get-improved.py
 scripts/security-header-checker.py
+extra/writeup
+extra/config_settings.md
+extra/todos.md

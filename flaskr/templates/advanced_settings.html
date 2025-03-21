@@ -59,10 +59,20 @@
       <br>
 
       <div id="ffuf_delay_div">
-        <label for="ffuf_delay" class="form-label">Ffuf delay (s)</label>
+        <label for="ffuf_delay" class="form-label">Ffuf delay (seconds)</label>
         <div class="ffuf_delay_div">
           <textarea id="ffuf_delay" name="ffuf_delay" placeholder="Example: 0 or 0.2">{{ config['ffuf_delay'] }}</textarea>
         </div>
+      </div>
+
+      <div id="ffuf_redirect_div">
+        <label for="ffuf_redirect" class="form-label">Ffuf redirect</label>
+        <div class="ffuf_redirect_div">
+          <input type="checkbox" id="ffuf_redirect" name="ffuf_redirect" value="True" {% if config['ffuf_redirect'] == 'True' %}checked{% endif %}>
+        </div>
+        <p id="ffuf_redirect_warning">
+          Note this setting increases reliability but may slow down the scan and take up more resources.
+        </p>
       </div>
 
       <button type="submit" class="btn">Save</button>

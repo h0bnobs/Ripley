@@ -17,5 +17,6 @@
     "enable_ffuf": "True",
     "verbose": "True",
     "openai_api_key": "",
-    "extra_commands": ""
+    "extra_commands": "",
+    "ffuf_redirects": "False"
 }
