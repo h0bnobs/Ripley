@@ -172,7 +172,8 @@ def create_app(test_config=None) -> Flask:
             update_config_json_file()
 
             # reload the page
-            session['config'] = reload_homepage()['config']
+            data = reload_homepage()
+            session['config'] = data['config']
             session['files_in_directory'] = data["files_in_directory"]
 
             return redirect(url_for('general_settings'))
@@ -325,6 +326,7 @@ def create_app(test_config=None) -> Flask:
         if 'general-settings' in referer:
             new_config['targets'] = request.form.get('targets', '')
             new_config['verbose'] = 'True' if 'verbose' in request.form else 'False'
+            new_config['speed'] = request.form['speed'].lower()
 
         # port scanning
         elif 'port-scanning-settings' in referer:
@@ -566,8 +568,9 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     targets, config_filepath, ffuf_delay,  
                     ffuf_subdomain_wordlist, ffuf_webpage_wordlist, disable_chatgpt_api, ports_to_scan, 
                     scan_type, aggressive_scan, scan_speed, os_detection, ping_hosts, ping_method, host_timeout,
-                    enable_ffuf, verbose, openai_api_key, extra_commands, chatgpt_model, ffuf_redirect
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    enable_ffuf, verbose, openai_api_key, extra_commands, chatgpt_model, ffuf_redirect,
+                    speed
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     config.get('targets', ''),
@@ -589,7 +592,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     config.get('openai_api_key', ''),
                     config.get('extra_commands', ''),
                     config.get('chatgpt_model', ''),
-                    config.get('ffuf_redirect', '')
+                    config.get('ffuf_redirect', ''),
+                    config.get('speed', '')
                 )
             )
         else:
@@ -615,7 +619,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     openai_api_key = ?,
                     extra_commands = ?,
                     chatgpt_model = ?,
-                    ffuf_redirect = ?
+                    ffuf_redirect = ?,
+                    speed = ?
                 """,
                 (
                     config.get('targets', ''),
@@ -637,7 +642,8 @@ def load_config_into_db(config: dict, config_filepath: str) -> None:
                     config.get('openai_api_key', ''),
                     config.get('extra_commands', ''),
                     config.get('chatgpt_model', ''),
-                    config.get('ffuf_redirect', '')
+                    config.get('ffuf_redirect', ''),
+                    config.get('speed', '')
                 )
             )
         db.commit()
@@ -728,7 +734,8 @@ def update_config_json_file():
             openai_api_key,
             extra_commands,
             chatgpt_model,
-            ffuf_redirect
+            ffuf_redirect,
+            speed
         FROM config
         """
     )
@@ -757,7 +764,8 @@ def update_config_json_file():
             "openai_api_key": row["openai_api_key"],
             "extra_commands": row["extra_commands"],
             "chatgpt_model": row["chatgpt_model"],
-            "ffuf_redirect": row["ffuf_redirect"]
+            "ffuf_redirect": row["ffuf_redirect"],
+            "speed": row["speed"]
         })
         with open(config_data["config_filepath"], 'w') as file:
             json.dump(config_data, file, indent=4)
@@ -794,7 +802,8 @@ def update_config_table(config: dict):
             openai_api_key = ?,
             extra_commands = ?,
             chatgpt_model = ?,
-            ffuf_redirect = ?
+            ffuf_redirect = ?,
+            speed = ?
         """,
         (
             config.get('targets', ''),
@@ -816,7 +825,8 @@ def update_config_table(config: dict):
             config.get('openai_api_key', ''),
             config.get('extra_commands', ''),
             config.get('chatgpt_model', ''),
-            config.get('ffuf_redirect', '')
+            config.get('ffuf_redirect', ''),
+            config.get('speed', '')
         )
     )
     db.commit()

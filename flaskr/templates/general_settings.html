@@ -34,9 +34,18 @@
             <!-- textarea for targets -->
             <textarea id="targets" name="targets" placeholder="Example: 192.168.1.1-192.168.1.4, 192.168.1.0/24, example.com" style="display: inline;">{{ session['config']['targets'] }}</textarea>
             <br>
+            <!-- verbose mode -->
             <label for="verbose" style="width: auto;" class="form-label">Print output to terminal during scan</label>
             <div class="verbose_div">
                 <input type="checkbox" id="verbose" name="verbose" value="True" {% if session['config']['verbose'] == 'True' %}checked{% endif %}>
+            </div>
+            <br>
+            <label for="speed" style="width: auto;" class="form-label">Overall speed of scan</label>
+            <div class="speed_div">
+                <select id="speed" name="speed">
+                    <option value="Normal" {% if session['config']['speed'] == 'normal' %}selected{% endif %}>Normal</option>
+                    <option value="Slow" {% if session['config']['speed'] == 'slow' %}selected{% endif %}>Slow</option>
+                </select>
             </div>
             <br>
             <!-- update config button -->

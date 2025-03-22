@@ -18,5 +18,6 @@
     "verbose": "True",
     "openai_api_key": "",
     "extra_commands": "",
-    "ffuf_redirects": "False"
+    "ffuf_redirects": "False",
+    "speed": "normal"
 }

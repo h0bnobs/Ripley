@@ -57,5 +57,6 @@ CREATE TABLE IF NOT EXISTS config
     openai_api_key          TEXT,
     extra_commands          TEXT,
     chatgpt_model           TEXT,
-    ffuf_redirect           TEXT
+    ffuf_redirect           TEXT,
+    speed                   TEXT
 );

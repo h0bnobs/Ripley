@@ -229,3 +229,9 @@
 - Added `ffuf_redirect` to the config and made the ffuf methods in `scanner_tools.py` more readable.
 - Made parts of `flask_app.py` more readable.
 - Changed `ThreadPoolExecutor` to use the default `max_workers` which is "min(32, os.cpu_count() + 4)".
+
+### Saturday 22nd March
+22/03/25 11:35am
+- Removed unwanted chars from the ChatGPT response for better readability.
+- Added `speed` to the config so user can choose to have normal or slow scan speeds.
+- Improved `check_and_kill_msf_rpc()` in `run_tool_for_gui.py` so that it finds the `msfrpcd` process with greater accuracy.

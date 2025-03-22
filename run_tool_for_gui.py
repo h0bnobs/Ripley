@@ -57,17 +57,17 @@ def check_and_kill_msf_rpc(verbose: str):
     :return: None
     """
     result = subprocess.run(
-        "ps aux | grep msfrpcd",
+        "pidof msfrpcd",
         shell=True,
         check=True,
         capture_output=True,
         text=True,
     )
-    t = result.stdout.split('\n')
+    t = result.stdout.strip()
     if verbose == 'True':
-        subprocess.run('kill ' + t[0].split()[1], shell=True)
+        subprocess.run('kill ' + t, shell=True)
     else:
-        subprocess.run('kill ' + t[0].split()[1], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run('kill ' + t, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def process_extra_commands(target: str, extra_commands: str, verbose: str) -> List[str]:
     """
@@ -291,7 +291,8 @@ def run_on_multiple_targets(target_list: List[str], config: Dict) -> str:
             return save_scan_results_to_tempfile(results)
 
     # scan multiple targets concurrently
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    max_workers = None if config['speed'] == 'normal' else round(os.cpu_count() / 2)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         temp_file_paths = list(executor.map(process_target, target_list))
 
     # a .txt file to store all temp file paths

@@ -115,6 +115,15 @@ def make_chatgpt_api_call(results: dict[str, str], model: str, api_key: str = No
                 }
             ]
         )
-        return completion.choices[0].message.content
+        return remove_chars(completion.choices[0].message.content)
     except Exception as error:
         return f"Error: API call failed. Try again. ({error})"
+
+
+def remove_chars(text: str) -> str:
+    """
+    Remove special characters from the text.
+    :param text: The text to remove special characters from.
+    :return: The text with special characters removed.
+    """
+    return text.replace("`", "").replace("*", "")

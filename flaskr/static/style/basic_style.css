@@ -87,7 +87,7 @@
   height: 14px;
 }
 
-.config_filepath_div, .ffuf_redirect_div, .chatgpt_model_div, .verbose_div, .openai_api_key, .scan_type_div, .enable_ffuf_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div, .ping_hosts_div, .ping_method_div, .chatgpt_api_call_div, .ffuf_delay_div {
+.config_filepath_div, .speed_div, .ffuf_redirect_div, .chatgpt_model_div, .verbose_div, .openai_api_key, .scan_type_div, .enable_ffuf_div, .aggressive_scan_div, .scan_type_div, .scan_speed_div, .os_detection_div, .ping_hosts_div, .ping_method_div, .chatgpt_api_call_div, .ffuf_delay_div {
   display: inline-block;
   vertical-align: top;
   margin-left: 10px;
