@@ -235,3 +235,9 @@
 - Removed unwanted chars from the ChatGPT response for better readability.
 - Added `speed` to the config so user can choose to have normal or slow scan speeds.
 - Improved `check_and_kill_msf_rpc()` in `run_tool_for_gui.py` so that it finds the `msfrpcd` process with greater accuracy.
+
+### Saturday 22nd March
+22/03/25 04:05pm
+- Small fix in metasploit section.
+- Removed `host timeout` in port scanning settings.
+- Added to `concurrency_test.py`

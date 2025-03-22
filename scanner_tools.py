@@ -406,7 +406,6 @@ def run_ffuf_subdomain(target: str, wordlist_filepath: str, enable_ffuf: str, ve
         command += '-r '
     if delay:
         command += f'-p {delay} '
-    print(command.strip())
     result = run_command_with_output_after(command.strip(), verbose)
 
     if isinstance(result, CalledProcessError):
@@ -444,7 +443,6 @@ def run_ffuf_webpage(target: str, wordlist_filepath: str, enable_ffuf: str, verb
         command += '-r '
     if delay:
         command += f'-p {delay} '
-    print(command.strip())
     result = run_command_with_output_after(command.strip(), verbose)
 
     if isinstance(result, CalledProcessError):

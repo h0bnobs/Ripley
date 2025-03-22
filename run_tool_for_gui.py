@@ -1,23 +1,24 @@
+import concurrent.futures
 import json
 import os
 import subprocess
 import tempfile
-import time
 import threading
-
-from subprocess import CompletedProcess
+import time
+from subprocess import CompletedProcess, SubprocessError
 from typing import List, Dict
-import concurrent.futures
+
 from flask import current_app
+
 from flaskr.flask_app import get_db
-from scripts.utils import COLOURS, remove_ansi_escape_codes, remove_leading_newline
-from scripts.chatgpt_call import make_chatgpt_api_call
-from scripts.run_commands import run_command_no_output, run_command_with_output_after, run_command_with_input
 from scanner_tools import (
     run_host, run_nmap, run_smbclient, run_ftp, get_screenshot,
     get_robots_file, run_dns_recon, run_ffuf_subdomain, is_target_webpage,
     run_ffuf_webpage, get_metasploit_modules, run_wpscan, check_security_headers
 )
+from scripts.chatgpt_call import make_chatgpt_api_call
+from scripts.run_commands import run_command_with_output_after
+from scripts.utils import COLOURS, remove_ansi_escape_codes, remove_leading_newline
 
 scan_counter = 0
 counter_lock = threading.Lock()
@@ -56,13 +57,16 @@ def check_and_kill_msf_rpc(verbose: str):
     :param verbose: Whether to print the output to the terminal.
     :return: None
     """
-    result = subprocess.run(
-        "pidof msfrpcd",
-        shell=True,
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            "pidof msfrpcd",
+            shell=True,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except SubprocessError:
+        return
     t = result.stdout.strip()
     if verbose == 'True':
         subprocess.run('kill ' + t, shell=True)
