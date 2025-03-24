@@ -246,4 +246,4 @@
 24/03/25 03:20pm
 - Changed colour scheme and improved various things in the GUI.
 - Added `user_manual`
-- 
+- Added the ffuf wordlists just in case.
