@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Manual</title>
+</head>
+<body>
+<h1>Select a page to read the documentation:</h1>
+<nav>
+    <a href="{{ url_for('user_manual', page='general') }}">General Settings</a> |
+    <a href="{{ url_for('user_manual', page='port-scanning') }}">Port Scanning</a> |
+    <a href="{{ url_for('user_manual', page='host-discovery') }}">Host Discovery</a> |
+    <a href="{{ url_for('user_manual', page='advanced-settings') }}">Advanced Settings</a> |
+    <a href="{{ url_for('user_manual', page='add-commands') }}">Add Commands</a> |
+    <a href="{{ url_for('user_manual', page='previous-scans') }}">Previous Scans</a>
+</nav>
+
+<hr>
+
+{% if page == 'general' %}
+<h1>General Settings Page</h1>
+<p><b>Upload different config</b></p>
+<p>Pressing this button brings up a file upload menu which when a valid .JSON file is selected, changes your current
+    config to this new config. It updates all settings with settings found in this new config. Please make sure that the
+    new config is valid and isn't missing any options. (Hint: copy your current config to this new config and change
+    settings manually before uploading!)</p>
+<p><b>Upload targets</b></p>
+<p>Pressing this button brings up a file upload menu which wants either a .txt file or a file with no extension. This file must have targets in this format:
+<pre style="font-size: 1.2em;">
+target 1
+target 2
+target 3</pre>as the backend will read this file line by line and add each line as a target.</p>
+<p><b>Enter targets</b></p>
+<p>An active textarea to enter your targets. Targets must be in the format:<pre style="font-size: 1.2em;">target 1, target 2, target 3</pre>
+Targets can be CIDR ranges like <code style="font-size: 1.2em;">192.169.1.0/24</code> or can be ranges like <code style="font-size: 1.2em;">192.168.1.1-192.169.1.10</code>.<br>
+Targets can be domains, web pages or IP addresses. There cannot be duplicate targets and they mustn't include 'https' or include things like spaces or commas.
+<pre style="font-size: 1.2em;">www.bbc.co.uk, 192.168.1.1/28, 192.168.1.240-192.168.1.255</pre>
+</p>
+<p><b>Print output to terminal</b></p>
+<p>When selected will print the output of each task being performed to the terminal where ripley_gui.py is being run.
+    Can cause clutter and very minor performance loss if on. When on shows live results of each target.</p>
+    <p><b>Scan speed</b></p>
+<p>Normal option uses <i>(num of available threads) + 4</i> and Slow option uses <i>(num of available threads) / 2</i>.</p>
+<p><b>Save changes button</b></p>
+<p>Will notify the user anytime local changes are made in the front end (eg a target added or a previously ticked option
+    being unticked). When pressed it will update the user settings and config with these new settings.</p>
+<p><b>Start scan</b></p>
+<p>Take all settings from every page and run the scan. Will redirect to the appropriate results page when ALL scans are
+    completed.</p>
+
+{% elif page == 'port-scanning' %}
+<h1>Port Scanning Settings Page</h1>
+<p><b>Ports textarea</b></p>
+<p>Similar to the targets textarea in that it is the place to enter your required ports to include on the port scan. They must be in the format:
+<pre style="font-size: 1.2em;">port 1, port 2, port 3</pre>
+Ports can also be supplied in a range, e.g. <code style="font-size: 1.2em;">1-1024</code> will scan ports 1 to 1024.<br>
+If no ports are supplied, then nmap will scan the top 1000 most popular.<br>
+If <code style="font-size: 1.2em;">*</code> is supplied then nmap will scan all ports.</p>
+<p><b>Port scan type</b></p>
+<p>See <a href="https://nmap.org/book/port-scanning-options.html">nmap scan techniques documentation</a> for information on SYN, TCP and UDP scans.</p>
+<p><b>Aggressive scan</b></p>
+<p>See <a href="https://nmap.org/book/man-misc-options.html">nmap misc options documentation.</a> Hint: ctrl+f for -A on this page!</p>
+<p><b>Port scan speed</b></p>
+<p>See <a href="https://nmap.org/book/performance-timing-templates.html">nmap timing template documentation.</a></p>
+<p><b>OS detection</b></p>
+<p>See <a href="https://nmap.org/book/man-os-detection.html">nmap OS detection documentation.</a></p>
+{% elif page == 'host-discovery' %}
+<h1>Host Discovery Settings page</h1>
+<p><b>Ping hosts</b></p>
+<p>If ticked, this option removes the parameter <code style="font-size: 1.2em;">-Pn</code> from the nmap command.<br>
+See <a href="https://nmap.org/book/man-host-discovery.html">nmap host discovery documentation.</a> Hint: ctrf+f for -Pn on this page!</p>
+<p><b>Ping methods</b></p>
+<p>If ping hosts is on, selects the method of which to ping the host.</p>
+{% elif page == 'advanced-settings' %}
+<h1>Advanced Settings Page</h1>
+<p><b>Edit config filepath</b></p>
+<p>Only to be used in rare cases when some weird config editing is required. Its recommended that users ignore this option.</p>
+<p><b>ChatGPT help</b></p>
+<p>Toggles whether to use ChatGPT for AI assistance/analysis. When enabled, one call per target is made. Requires a valid <a href="https://openai.com/index/openai-api/">OpenAI api key</a> to work.<br>The api key can either be provided in the advanced settings OR as an environment variable with <code style="font-size: 1.2em;">export OPENAI_API_KEY={key}</code>. If one isn't supplied then AI assistance is ignored.</p>
+<p><b>ChatGPT model</b></p>
+<p>Dropdown to choose between GPT3.5-Turbo or GPT4. The former costs roughly <$0.03 per call while the latter costs from $0.10 to $0.16 per call.</p>
+<p><b>OpenAI API key textarea</b></p>
+<p>Textarea to provide the user's OpenAI api key. If not supplied here, then when the call is made the tool will try to look in the environment variable and if not there either, the call will not be made.</p>
+<p><b>Fuzzing</b></p>
+<p>If enabled, then web application fuzzing via ffuf will be enabled</p>
+<p><b>Ffuf delay</b></p>
+<p>Small textarea to provide a float for the delay in seconds to include when running ffuf on the target. The delay parameter <code style="font-size: 1.2em;">-p</code> will be populated here.<br>For no delay, input 0. For a 0.1 second delay input 0.1.</p>
+<p><b>Ffuf redirect</b></p>
+<p>If enabled, will add <code style="font-size: 1.2em;">-r</code> to the ffuf command. This provides a more accurate set of responses but increases time for completion.</p>
+<p><b>Subdomain and directory wordlist file uploads</b></p>
+<p>When the underlined text (either <code style="font-size: 1.2em;"> Upload different subdomain wordlist</code> or <code style="font-size: 1.2em;"> Upload different webpage wordlist</code>) is pressed, a file upload menu will pop up, allowing the user to upload their own subdomain or directory wordlists for web fuzzing.<br>The default has been chosen already, but can be swapped out with any valid wordlist that complies with ffuf's requirements.</p>
+{% elif page == 'add-commands' %}
+<h1>Add Commands Page</h1>
+<p>This page is for users to add whatever custom bash command to the scan. The command(s) will be run on every target given by the user. One simple example of an extra command would be<pre>sslscan {target}:443</pre>This runs sslscan on port 443 on each target, so if targets consisted of <code style="font-size: 1.2em;">www.bbc.co.uk, www.kent.ac.uk</code> then the extra commands that will be run during this scan are
+<pre>sslscan www.bbc.co.uk:443
+sslscan www.kent.ac.uk:443</pre>You notice that the string <code style="font-size: 1.2em;">{target}</code> is included in each extra command. This sting is substituted for the actual target (www.kent.ac.uk or www.bbc.co.uk) when the command is run.<br>Any added command can be removed or edited.</p>
+{% elif page == 'previous-scans' %}
+<h1>Previous Scans Page</h1>
+<p>This page is for viewing each previous scan one at a time. The user can filter by date and/or target</p>
+{% endif %}
+</body>
+</html>

@@ -69,6 +69,16 @@ def create_app(test_config=None) -> Flask:
 
     app.route('/')(lambda: redirect(url_for('general_settings')))
 
+    @app.route('/user-manual', methods=['GET'])
+    def user_manual():
+        """
+        The route for the user manual.
+        :return: The render template of the user manual html file.
+        """
+        page = request.args.get('page', 'general')  # default to general
+        return render_template('user_manual.html', page=page)
+
+
     @app.route('/general-settings', methods=['GET'])
     def general_settings() -> str:
         """
@@ -201,8 +211,23 @@ def create_app(test_config=None) -> Flask:
 
             update_config_table(new_config)
 
-            with open(new_config.get('config_filepath'), 'w') as file:
-                json.dump(new_config, file, indent=4)
+            if new_config.get('config_filepath') != '':
+                with open(new_config.get('config_filepath'), 'w') as file:
+                    json.dump(new_config, file, indent=4)
+            else:
+                files_in_dir = sorted(
+                    [os.path.join(os.getcwd(), file) for file in os.listdir(os.getcwd()) if file.endswith('.json')],
+                    key=lambda x: (not x.endswith('.json'))
+                )
+
+                for file in files_in_dir:
+                    if file.startswith(file):
+                        with open(file, 'r+') as f:
+                            data = json.load(f)
+                            data['config_filepath'] = os.path.abspath(file)
+                            f.seek(0)
+                            json.dump(data, f, indent=4)
+                            f.truncate()
 
             data = reload_homepage()
             session['config'] = data["config"]
@@ -424,6 +449,10 @@ def create_app(test_config=None) -> Flask:
                          url_for('general_settings'))
 
         full_target_list = parse_targets(unparsed_targets)
+        duplicate_targets = [target for target in full_target_list if full_target_list.count(target) > 1]
+        if duplicate_targets:
+            return error(f"Duplicate targets found: {', '.join(set(duplicate_targets))}. Please check your target list.", url_for('general_settings'))
+        
         if len(full_target_list) > 1:  # multiple targets
             start = time.time()
             psutil.cpu_percent(interval=None)

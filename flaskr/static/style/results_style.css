@@ -2,18 +2,16 @@
     cursor: pointer;
     font-weight: bold;
     padding: 10px;
-    background-color: #00005B;
-    border: 1px solid #ccc;
+    border: 1px solid black;
     margin-top: 10px;
-    color: white;
+    color: black;
 }
 
 .content {
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid black;
     margin-top: -1px;
-    background-color: #00005B;
-    color: white;
+    color: black;
 }
 
 .outer-content {
@@ -24,12 +22,7 @@
     display: block;
 }
 
-body {
-    background-color: #00005B;
-}
-
 #p_information_header, #p_information_list_element, #p_information_subheading {
-    color: #FFA400;
     font-weight: bolder;
     font-family: 'Aeonik Pro', sans-serif;
 }

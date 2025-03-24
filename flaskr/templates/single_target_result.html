@@ -9,10 +9,10 @@
     <link rel="stylesheet" href="../static/style/results_style.css">
 </head>
 <body>
-<h1 style="color: #FFA400">Scan Results</h1>
+<h1>Scan Results</h1>
 <button onclick="window.location.href='/general-settings'">Back</button>
 <button onclick="window.location.href='{{ url_for('port_info') }}'">View Port Information</button>
-<!-- Outer collapsible for the entire target -->
+<!-- outer collapsible for the entire target -->
 <div class="collapsible outer-collapsible">Scan Results for Target: {{ target }}</div>
 <div class="content outer-content">
     <div class="results">

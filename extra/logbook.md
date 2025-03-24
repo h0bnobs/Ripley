@@ -241,3 +241,9 @@
 - Small fix in metasploit section.
 - Removed `host timeout` in port scanning settings.
 - Added to `concurrency_test.py`
+
+### Monday 24th March
+24/03/25 03:20pm
+- Changed colour scheme and improved various things in the GUI.
+- Added `user_manual`
+- 

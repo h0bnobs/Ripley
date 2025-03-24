@@ -42,7 +42,8 @@
 
         <label for="aggressive_scan" class="form-label">Aggressive scan</label>
         <div class="aggressive_scan_div">
-            <input type="checkbox" id="aggressive_scan" name="aggressive_scan" value="True" {% if config['aggressive_scan'] == 'True' %}checked{% endif %}>
+            <input type="checkbox" id="aggressive_scan" name="aggressive_scan" value="True" {% if config['aggressive_scan']
+            == 'True' %}checked{% endif %}>
             <p id="aggressive_scan_warning">Warning: An aggressive port scan is intrusive and shouldn't be used against
                 target networks without permission.</p>
         </div>
@@ -62,7 +63,7 @@
                 the OS of a target.</p>
         </div>
         <br>
-        <button class="btn_margin2" type="submit">Save</button>
+        <button class="btn_margin2" type="submit">Save changes</button>
         <p id="needs-saving"
            style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">
             Needs saving!</p>

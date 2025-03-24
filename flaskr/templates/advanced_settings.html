@@ -1,107 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Configuration</title>
-  <link rel="stylesheet" href="../static/style/basic_style.css">
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="../static/js/advanced_settings.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration</title>
+    <link rel="stylesheet" href="../static/style/basic_style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="../static/js/advanced_settings.js"></script>
 </head>
 <body>
-  <div class="vertical-bar">
+<div class="vertical-bar">
     <a href="general-settings">General</a>
     <a href="port-scanning-settings">Port Scanning</a>
     <a href="host-discovery-settings">Host Discovery</a>
     <a href="advanced-settings" class="active">Advanced Settings</a>
     <a href="add-commands">Add Commands</a>
     <a href="previous-scans">Previous Scans</a>
-  </div>
+</div>
 
-  <div class="content">
+<div class="content">
     <h2>Advanced Settings:</h2>
+    <div class="advanced-settings-container">
+        <form id="update-config-form" action="/update-config" method="POST" enctype="multipart/form-data">
+            <label for="config_filepath" class="form-label">Edit config filepath:</label>
+            <div class="config_filepath_div">
+                <input type="text" id="config_filepath" style="height: 18px; margin-left: 2.5px; width: 350px;"
+                       name="config_filepath" value="{{ config['config_filepath'] }}">
+            </div>
+            <p id="config_filepath_warning">
+                Warning if you have changed this to a second valid JSON file in the root directory, the current settings
+                you
+                have set will override into this new config file when the tool is run!
+            </p>
+            <br>
+            <label for="chatgpt_api_call" class="form-label">ChatGPT help</label>
+            <div class="chatgpt_api_call_div">
+                <input type="checkbox" id="chatgpt_api_call" name="chatgpt_api_call" value="True" {% if config['disable_chatgpt_api']
+                == 'false' %}checked{% endif %}>
+            </div>
+            <br>
+            <label for="chatgpt_model" class="form-label">ChatGPT model</label>
+            <div class="chatgpt_model_div">
+                <select id="chatgpt_model" name="chatgpt_model">
+                    <option value="gpt-3.5-turbo" {% if config[
+                    'chatgpt_model'] == 'gpt-3.5-turbo' %}selected{% endif %}>GPT-3.5 Turbo</option>
+                    <option value="gpt-4" {% if config[
+                    'chatgpt_model'] == 'gpt-4' %}selected{% endif %}>GPT-4</option>
+                </select>
+            </div>
+            <br>
+            <label for="openai_api_key" class="form-label">OpenAI API Key</label>
+            <div class="openai_api_key">
+            <textarea id="openai_api_key" name="openai_api_key" style="width: 410px; height: 68px;"
+                      placeholder="OpenAI API Key.">{{ config['openai_api_key'] }}</textarea>
+            </div>
+            <p id="chatgpt_api_call_warning">
+                Warning: you have enabled ChatGPT without setting an API key here. If you have set the OPENAI_API_KEY
+                environment variable then proceed. If not, please read the manual for instructions on setting your API
+                key.
+            </p>
+            <br>
 
-    <form action="/update-config" method="POST" enctype="multipart/form-data">
-      <label for="config_filepath" class="form-label">Edit config filepath:</label>
-      <div class="config_filepath_div">
-        <input type="text" id="config_filepath" style="height: 18px; margin-left: 2.5px; width: 350px;" name="config_filepath" value="{{ config['config_filepath'] }}">
-      </div>
-      <p id="config_filepath_warning">
-        Warning if you have changed this to a second valid JSON file in the root directory, the current settings you have set will override into this new config file when the tool is run!
-      </p>
-      <br>
-      <label for="chatgpt_api_call" class="form-label">ChatGPT help</label>
-      <div class="chatgpt_api_call_div">
-        <input type="checkbox" id="chatgpt_api_call" name="chatgpt_api_call" value="True" {% if config['disable_chatgpt_api'] == 'false' %}checked{% endif %}>
-      </div>
-      <br>
-      <label for="chatgpt_model" class="form-label">ChatGPT model</label>
-      <div class="chatgpt_model_div">
-        <select id="chatgpt_model" name="chatgpt_model">
-          <option value="gpt-3.5-turbo" {% if config['chatgpt_model'] == 'gpt-3.5-turbo' %}selected{% endif %}>GPT-3.5 Turbo</option>
-          <option value="gpt-4" {% if config['chatgpt_model'] == 'gpt-4' %}selected{% endif %}>GPT-4</option>
-        </select>
-      </div>
-      <br>
-      <label for="openai_api_key" class="form-label">OpenAI API Key</label>
-      <div class="openai_api_key">
-        <textarea id="openai_api_key" name="openai_api_key" style="width: 410px; height: 68px;" placeholder="OpenAI API Key.">{{ config['openai_api_key'] }}</textarea>
-      </div>
-      <p id="chatgpt_api_call_warning">
-        Warning: you have enabled ChatGPT without setting an API key here. If you have set the OPENAI_API_KEY environment variable then proceed. If not, please read the manual for instructions on setting your API key.
-      </p>
-      <br>
+            <label for="enable_ffuf" class="form-label">Fuzzing</label>
+            <div class="enable_ffuf_div">
+                <input type="checkbox" id="enable_ffuf" name="enable_ffuf" value="True" {% if config['enable_ffuf']
+                =='True' %}checked{% endif %}>
+            </div>
+            <br>
 
-      <label for="enable_ffuf" class="form-label">Fuzzing</label>
-      <div class="enable_ffuf_div">
-        <input type="checkbox" id="enable_ffuf" name="enable_ffuf" value="True" {% if config['enable_ffuf'] == 'True' %}checked{% endif %}>
-      </div>
-      <br>
+            <div id="ffuf_delay_div">
+                <label for="ffuf_delay" class="form-label">Ffuf delay (seconds)</label>
+                <div class="ffuf_delay_div">
+                <textarea id="ffuf_delay" name="ffuf_delay"
+                          placeholder="Example: 0 or 0.2">{{ config['ffuf_delay'] }}</textarea>
+                </div>
+            </div>
 
-      <div id="ffuf_delay_div">
-        <label for="ffuf_delay" class="form-label">Ffuf delay (seconds)</label>
-        <div class="ffuf_delay_div">
-          <textarea id="ffuf_delay" name="ffuf_delay" placeholder="Example: 0 or 0.2">{{ config['ffuf_delay'] }}</textarea>
-        </div>
-      </div>
+            <div id="ffuf_redirect_div">
+                <label for="ffuf_redirect" class="form-label">Ffuf redirect</label>
+                <div class="ffuf_redirect_div">
+                    <input type="checkbox" id="ffuf_redirect" name="ffuf_redirect" value="True" {% if config['ffuf_redirect']
+                    == 'True' %}checked{% endif %}>
+                </div>
+                <p id="ffuf_redirect_warning">
+                    Note this setting increases reliability but may slow down the scan and take up more resources.
+                </p>
+            </div>
 
-      <div id="ffuf_redirect_div">
-        <label for="ffuf_redirect" class="form-label">Ffuf redirect</label>
-        <div class="ffuf_redirect_div">
-          <input type="checkbox" id="ffuf_redirect" name="ffuf_redirect" value="True" {% if config['ffuf_redirect'] == 'True' %}checked{% endif %}>
-        </div>
-        <p id="ffuf_redirect_warning">
-          Note this setting increases reliability but may slow down the scan and take up more resources.
-        </p>
-      </div>
-
-      <button type="submit" class="btn">Save</button>
-    </form>
-      <p id="needs-saving" style="color: #FFA400; font-weight: bolder; display: none;">Save changes</p>
-
-    <!-- File Upload Forms (Moved Outside Main Form) -->
-    <div id="ffuf_wordlists">
-      <div id="ffuf_subdomain_wordlist">
-        <p>
-          Subdomain Wordlist: <span id="subdomain_wordlist_display">{{ config['ffuf_subdomain_wordlist'] }}</span>
-        </p>
-        <form id="upload-subdomain-form" action="/upload-subdomain-wordlist" method="POST" enctype="multipart/form-data">
-          <label for="subdomain-file" id="upload-file-label">Upload subdomain wordlist</label>
-          <input type="file" id="subdomain-file" name="file" style="display: none;">
         </form>
-      </div>
-      <br>
 
-      <div id="ffuf_webpage_wordlist">
-        <p>
-          Webpage Wordlist: <span id="webpage_wordlist_display">{{ config['ffuf_webpage_wordlist'] }}</span>
-        </p>
-        <form id="upload-webpage-form" action="/upload-webpage-wordlist" method="POST" enctype="multipart/form-data">
-          <label for="webpage-file" id="upload-file-label">Upload webpage wordlist</label>
-          <input type="file" id="webpage-file" name="file" style="display: none;">
-        </form>
-      </div>
+        <div id="ffuf_wordlists">
+            <div id="ffuf_subdomain_wordlist">
+                <p>
+                    Subdomain Wordlist: <span style="font-weight: bold" id="subdomain_wordlist_display">{{ config['ffuf_subdomain_wordlist'] }}</span>
+                </p>
+                <form id="upload-subdomain-form" action="/upload-subdomain-wordlist" method="POST"
+                      enctype="multipart/form-data">
+                    <label for="subdomain-file" class="upload-label">Upload different subdomain wordlist</label>
+                    <input type="file" id="subdomain-file" name="file" style="display: none;"
+                           onchange="this.form.submit()">
+                </form>
+            </div>
+            <br>
+
+            <div id="ffuf_webpage_wordlist">
+                <p>
+                    Webpage Wordlist: <span style="font-weight: bold" id="webpage_wordlist_display">{{ config['ffuf_webpage_wordlist'] }}</span>
+                </p>
+                <form id="upload-webpage-form" action="/upload-webpage-wordlist" method="POST"
+                      enctype="multipart/form-data">
+                    <label for="webpage-file" class="upload-label">Upload different webpage wordlist</label>
+                    <input type="file" id="webpage-file" name="file" style="display: none;"
+                           onchange="this.form.submit()">
+                </form>
+            </div>
+        </div>
+
+        <div id="save-button-container">
+            <button type="submit" form="update-config-form" class="btn_margin2">Save changes</button>
+            <p id="needs-saving" style="color: #FFA400; font-weight: bolder; display: none;">Save changes</p>
+        </div>
     </div>
-  </div>
+</div>
 </body>
 </html>

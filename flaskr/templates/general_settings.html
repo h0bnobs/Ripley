@@ -19,19 +19,23 @@
     </div>
 
     <div class="content">
-        <h2>View and edit current config that the tool will use:</h2>
-        <!-- hidden input for full_target_string -->
-        <!-- <input type="hidden" id="full_target_string" name="full_target_string" value="{{ full_target_string }}"> -->
-        <!-- upload a file for targets -->
+        <!-- upload config file button -->
+        <form id="upload-config-form" action="/upload-file" method="POST" enctype="multipart/form-data">
+            <!-- label acting as the visible "button" -->
+            <label for="config-file-input" id="upload-config-label">Upload a different config</label>
+            <!-- hidden file input -->
+            <input type="file" id="config-file-input" name="file" accept=".json" style="display: none;" onchange="this.form.submit()">
+        </form>
         <form id="upload-form" action="/upload-targets-file" method="POST" enctype="multipart/form-data">
             <!-- label acting as the visible "button" -->
             <label for="file-input" id="upload-file-label">Upload Targets</label>
             <!-- hidden file input with proper id and name -->
             <input type="file" id="file-input" name="file" onchange="this.form.submit()">
         </form>
-
+        <br>
         <form action="/update-config" method="POST">
             <!-- textarea for targets -->
+            <label for="targets" style="display: block">Enter targets:</label>
             <textarea id="targets" name="targets" placeholder="Example: 192.168.1.1-192.168.1.4, 192.168.1.0/24, example.com" style="display: inline;">{{ session['config']['targets'] }}</textarea>
             <br>
             <!-- verbose mode -->
@@ -40,6 +44,7 @@
                 <input type="checkbox" id="verbose" name="verbose" value="True" {% if session['config']['verbose'] == 'True' %}checked{% endif %}>
             </div>
             <br>
+            <!-- speed -->
             <label for="speed" style="width: auto;" class="form-label">Overall speed of scan</label>
             <div class="speed_div">
                 <select id="speed" name="speed">
@@ -49,33 +54,14 @@
             </div>
             <br>
             <!-- update config button -->
-            <button class="btn_margin" type="submit">Save</button>
+            <button class="btn_margin" type="submit">Save changes</button>
             <p id="needs-saving" style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">Needs saving!</p>
-        </form>
-        <br>
-
-        <!-- upload config file buttons -->
-        <form action="/upload-file" method="POST" enctype="multipart/form-data">
-            <input id="up" type="file" title="Upload config" name="file" class="file-upload" accept=".json">
-            <button type="submit">Upload File</button>
         </form>
 
         <!-- run button -->
         <form action="/running" method="POST">
-            <button class="btn_margin" type="submit">Run Ripley</button>
+            <button class="btn_margin" type="submit">Start Scan</button>
         </form>
-
-        <!-- toggle file list visibility -->
-        <h3>Currently working in {{ session['current_directory'] }}</h3>
-        <button id="toggle-files-btn" class="btn_margin">Toggle Relevant Files in Working Directory</button>
-        <div id="files-list" style="display: none;">
-            <h4>Relevant files in the current directory:</h4>
-            <ul>
-                {% for file in session['files_in_directory'] %}
-                <li>{{ file }}</li>
-                {% endfor %}
-            </ul>
-        </div>
     </div>
 </body>
 </html>
