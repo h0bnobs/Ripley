@@ -19,22 +19,22 @@ $(document).ready(function () {
     });
 
     $('#verbose').on('change', function () {
-       var newVerbose = $('#verbose').is(':checked');
-         if (newVerbose !== originalVerbose) {
-              $('#needs-saving').css('display', 'inline');
-         } else {
-              $('#needs-saving').css('display', 'none');
-         }
+        var newVerbose = $('#verbose').is(':checked');
+        if (newVerbose !== originalVerbose) {
+            $('#needs-saving').css('display', 'inline');
+        } else {
+            $('#needs-saving').css('display', 'none');
+        }
     });
 
     $('#config, #targets, #speed').on('input change', function () {
-    var newConfig = $('#config').val();
-    var newTargets = $('#targets').val();
-    var newSpeed = $('#speed').val();
-    if (newConfig !== originalConfig || newTargets !== originalTargets || newSpeed !== originalSpeed) {
-        $('#needs-saving').css('display', 'inline');
-    } else {
-        $('#needs-saving').css('display', 'none');
-    }
-});
+        var newConfig = $('#config').val();
+        var newTargets = $('#targets').val();
+        var newSpeed = $('#speed').val();
+        if (newConfig !== originalConfig || newTargets !== originalTargets || newSpeed !== originalSpeed) {
+            $('#needs-saving').css('display', 'inline');
+        } else {
+            $('#needs-saving').css('display', 'none');
+        }
+    });
 });

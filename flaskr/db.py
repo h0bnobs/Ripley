@@ -25,7 +25,7 @@ def get_db() -> sqlite3.Connection:
     return g.db
 
 
-def close_db(e: Any =None) -> None:
+def close_db(e: Any = None) -> None:
     """
     Closes the SQLite database connection for the current Flask application context, if open.
 

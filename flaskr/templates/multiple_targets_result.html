@@ -99,30 +99,30 @@
 {% endfor %}
 
 <script>
-$(document).ready(function() {
-    // Expand all collapsibles
-    $('#expand-all').click(function() {
-        $('.collapsible').each(function() {
-            $(this).addClass('active');
-            $(this).next('.content').slideDown();
+    $(document).ready(function () {
+        // Expand all collapsibles
+        $('#expand-all').click(function () {
+            $('.collapsible').each(function () {
+                $(this).addClass('active');
+                $(this).next('.content').slideDown();
+            });
         });
-    });
 
-    // Search functionality
-    $('#search-input').on('input', function() {
-        var searchTerm = $(this).val().toLowerCase();
-        $('.results pre').each(function() {
-            var text = $(this).text().toLowerCase();
-            if (text.includes(searchTerm)) {
-                $(this).closest('.content').prev('.collapsible').addClass('active');
-                $(this).closest('.content').slideDown();
-                $(this).html($(this).text().replace(new RegExp(searchTerm, 'gi'), (match) => `<mark>${match}</mark>`));
-            } else {
-                $(this).html($(this).text());
-            }
+        // Search functionality
+        $('#search-input').on('input', function () {
+            var searchTerm = $(this).val().toLowerCase();
+            $('.results pre').each(function () {
+                var text = $(this).text().toLowerCase();
+                if (text.includes(searchTerm)) {
+                    $(this).closest('.content').prev('.collapsible').addClass('active');
+                    $(this).closest('.content').slideDown();
+                    $(this).html($(this).text().replace(new RegExp(searchTerm, 'gi'), (match) => `<mark>${match}</mark>`));
+                } else {
+                    $(this).html($(this).text());
+                }
+            });
         });
     });
-});
 </script>
 
 </body>

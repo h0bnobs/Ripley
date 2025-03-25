@@ -1,14 +1,16 @@
 """
 This script runs the gui version of the tool
 """
-import webbrowser
-import threading
-from flaskr.flask_app import create_app
-import time
 import os
+import threading
+import time
+import webbrowser
+
+from flaskr.flask_app import create_app
 from scripts.run_commands import run_command_no_output
 
 PORT = 5000
+
 
 def run_flask_app():
     """

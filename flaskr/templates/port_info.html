@@ -6,16 +6,16 @@
     <link rel="stylesheet" href="../static/style/results_style.css">
 </head>
 <body>
-    <h1 id="p_information_header">Port Information</h1>
-    <div class="port-info">
-        {% for port, hosts in port_data %}
-            <h2 id="p_information_subheading">Port {{ port }} ({{ hosts|length // 2 }} hosts)</h2>
-            <ul>
-                {% for i in range(0, hosts|length, 2) %}
-                    <li id="p_information_list_element">{{ hosts[i] }} ({{ hosts[i + 1] }})</li>
-                {% endfor %}
-            </ul>
+<h1 id="p_information_header">Port Information</h1>
+<div class="port-info">
+    {% for port, hosts in port_data %}
+    <h2 id="p_information_subheading">Port {{ port }} ({{ hosts|length // 2 }} hosts)</h2>
+    <ul>
+        {% for i in range(0, hosts|length, 2) %}
+        <li id="p_information_list_element">{{ hosts[i] }} ({{ hosts[i + 1] }})</li>
         {% endfor %}
-    </div>
+    </ul>
+    {% endfor %}
+</div>
 </body>
 </html>

@@ -15,8 +15,8 @@ import json
 import os
 import re
 import time
-import psutil
 
+import psutil
 from flask import Flask, render_template, request, redirect, url_for, session, Response
 from libnmap.parser import NmapParser
 
@@ -77,7 +77,6 @@ def create_app(test_config=None) -> Flask:
         """
         page = request.args.get('page', 'general')  # default to general
         return render_template('user_manual.html', page=page)
-
 
     @app.route('/general-settings', methods=['GET'])
     def general_settings() -> str:
@@ -403,7 +402,7 @@ def create_app(test_config=None) -> Flask:
             return "No result to display!"
 
         with open(result, 'r') as f:
-            temp_file = f.read().strip() #temp_file = json file
+            temp_file = f.read().strip()  # temp_file = json file
 
         with open(temp_file, 'r') as f:
             parsed_json = json.load(f)
@@ -451,8 +450,10 @@ def create_app(test_config=None) -> Flask:
         full_target_list = parse_targets(unparsed_targets)
         duplicate_targets = [target for target in full_target_list if full_target_list.count(target) > 1]
         if duplicate_targets:
-            return error(f"Duplicate targets found: {', '.join(set(duplicate_targets))}. Please check your target list.", url_for('general_settings'))
-        
+            return error(
+                f"Duplicate targets found: {', '.join(set(duplicate_targets))}. Please check your target list.",
+                url_for('general_settings'))
+
         if len(full_target_list) > 1:  # multiple targets
             start = time.time()
             psutil.cpu_percent(interval=None)
@@ -477,7 +478,6 @@ def create_app(test_config=None) -> Flask:
         port_data = get_interesting_ports()
         sorted_ports = sorted(port_data.items(), key=lambda item: len(item[1]), reverse=True)
         return render_template('port_info.html', port_data=sorted_ports)
-
 
     @app.route('/remove-extra-command', methods=['POST'])
     def remove_extra_command() -> Response:
@@ -863,32 +863,26 @@ def update_config_table(config: dict):
 
 def check_wordlists(config: dict):
     """
-    Checks if the ffuf wordlists are set in the config. If they aren't it then checks if the defaults have been downloaded
-    and if they have, it then sets them in the config. If they haven't, aka its the first time running, then it downloads them
-    and sets them in the config.
+    Checks if the ffuf wordlists are set in the config. If they aren't, it then checks if the defaults have been downloaded
+    and if they have, it then sets them in the config. If they haven't, it downloads them and sets them in the config.
     :param config: The configuration file as a dictionary.
     :return: None
     """
 
-    # if there are no wordlists, download them and set them in the config
     def check_subdomain(subdomain_wordlist: str):
         """
-        Check if the subdomain wordlist is set in the config. If it isn't, it then checks if the default has been downloaded
+        Check if the subdomain wordlist is set in the config. If it isn't, it then checks if the default has been downloaded.
         :param subdomain_wordlist: The subdomain wordlist in the config.
-        :return:
+        :return: None
         """
         if not subdomain_wordlist:
-            # check if wordlist exists already in proj root
             db = get_db()
-            for file in os.listdir():
-                if file == 'dnspod-top2000-sub-domains.txt':
-                    # the file has been downloaded already but not set in the config!
-                    db.execute("UPDATE config SET ffuf_subdomain_wordlist = 'dnspod-top2000-sub-domains.txt'")
-                    db.commit()
-                    update_config_json_file()
-                    return
+            if 'dnspod-top2000-sub-domains.txt' in os.listdir():
+                db.execute("UPDATE config SET ffuf_subdomain_wordlist = 'dnspod-top2000-sub-domains.txt'")
+                db.commit()
+                update_config_json_file()
+                return
             else:
-                # get suitable wordlist from git if not found
                 url = 'https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt'
                 t = run_command_with_output_after(f'curl -o dnspod-top2000-sub-domains.txt {url}', config['verbose'])
                 if t.returncode == 0:
@@ -897,23 +891,30 @@ def check_wordlists(config: dict):
                     update_config_json_file()
                     return
 
+        if subdomain_wordlist not in os.listdir():
+            url = 'https://raw.githubusercontent.com/DNSPod/oh-my-free-data/master/src/dnspod-top2000-sub-domains.txt'
+            t = run_command_with_output_after(f'curl -o dnspod-top2000-sub-domains.txt {url}', config['verbose'])
+            if t.returncode == 0:
+                db = get_db()
+                db.execute("UPDATE config SET ffuf_subdomain_wordlist = 'dnspod-top2000-sub-domains.txt'")
+                db.commit()
+                update_config_json_file()
+                return
+
     def check_directory(directory_wordlist: str):
         """
-        Check if the directory wordlist is set in the config. If it isn't, it then checks if the default has been downloaded
+        Check if the directory wordlist is set in the config. If it isn't, it then checks if the default has been downloaded.
         :param directory_wordlist: The directory wordlist in the config.
-        :return:
+        :return: None
         """
         if not directory_wordlist:
             db = get_db()
-            # check if wordlist exists already in proj root
-            for file in os.listdir():
-                if file == 'Directories_Common.wordlist':
-                    db.execute("UPDATE config SET ffuf_webpage_wordlist = 'Directories_Common.wordlist'")
-                    db.commit()
-                    update_config_json_file()
-                    return
+            if 'Directories_Common.wordlist' in os.listdir():
+                db.execute("UPDATE config SET ffuf_webpage_wordlist = 'Directories_Common.wordlist'")
+                db.commit()
+                update_config_json_file()
+                return
             else:
-                # get suitable wordlist from git if not found
                 url = 'https://raw.githubusercontent.com/emadshanab/WordLists-20111129/master/Directories_Common.wordlist'
                 t = run_command_with_output_after(f'curl -o Directories_Common.wordlist {url}', config['verbose'])
                 if t.returncode == 0:
@@ -922,10 +923,18 @@ def check_wordlists(config: dict):
                     update_config_json_file()
                     return
 
-    subdomain_wordlist = config['ffuf_subdomain_wordlist']
-    check_subdomain(subdomain_wordlist)
-    directory_wordlist = config['ffuf_webpage_wordlist']
-    check_directory(directory_wordlist)
+        if directory_wordlist not in os.listdir():
+            url = 'https://raw.githubusercontent.com/emadshanab/WordLists-20111129/master/Directories_Common.wordlist'
+            t = run_command_with_output_after(f'curl -o Directories_Common.wordlist {url}', config['verbose'])
+            if t.returncode == 0:
+                db = get_db()
+                db.execute("UPDATE config SET ffuf_webpage_wordlist = 'Directories_Common.wordlist'")
+                db.commit()
+                update_config_json_file()
+                return
+
+    check_subdomain(config['ffuf_subdomain_wordlist'])
+    check_directory(config['ffuf_webpage_wordlist'])
 
 
 def get_interesting_ports() -> dict:

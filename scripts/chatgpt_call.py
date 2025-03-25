@@ -1,4 +1,5 @@
 import os
+
 import tiktoken
 from openai import OpenAI, OpenAIError
 
@@ -48,7 +49,7 @@ def trim_results_for_token_limit(results: dict[str, str], model: str, max_tokens
         robots_output = results.get('robots_output', '')
         important_terms = ['admin', 'login', 'secure', 'password', 'confidential']
         filtered_lines = [
-            line for line in robots_output.splitlines() 
+            line for line in robots_output.splitlines()
             if any(term in line for term in important_terms)
         ]
         results['robots_output'] = "\n".join(filtered_lines)

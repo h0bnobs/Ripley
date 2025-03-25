@@ -9,59 +9,69 @@
     <script src="../static/js/index.js"></script>
 </head>
 <body>
-    <div class="vertical-bar">
-        <a href="general-settings" class="active">General</a>
-        <a href="port-scanning-settings">Port Scanning</a>
-        <a href="host-discovery-settings">Host Discovery</a>
-        <a href="advanced-settings">Advanced Settings</a>
-        <a href="add-commands">Add Commands</a>
-        <a href="previous-scans">Previous Scans</a>
-    </div>
+<div class="top-right-button">
+    <a href="user-manual?page=general" class="button">User Manual</a>
+</div>
+<div class="vertical-bar">
+    <a href="general-settings" class="active">General</a>
+    <a href="port-scanning-settings">Port Scanning</a>
+    <a href="host-discovery-settings">Host Discovery</a>
+    <a href="advanced-settings">Advanced Settings</a>
+    <a href="add-commands">Add Commands</a>
+    <a href="previous-scans">Previous Scans</a>
+</div>
 
-    <div class="content">
-        <!-- upload config file button -->
-        <form id="upload-config-form" action="/upload-file" method="POST" enctype="multipart/form-data">
-            <!-- label acting as the visible "button" -->
-            <label for="config-file-input" id="upload-config-label">Upload a different config</label>
-            <!-- hidden file input -->
-            <input type="file" id="config-file-input" name="file" accept=".json" style="display: none;" onchange="this.form.submit()">
-        </form>
-        <form id="upload-form" action="/upload-targets-file" method="POST" enctype="multipart/form-data">
-            <!-- label acting as the visible "button" -->
-            <label for="file-input" id="upload-file-label">Upload Targets</label>
-            <!-- hidden file input with proper id and name -->
-            <input type="file" id="file-input" name="file" onchange="this.form.submit()">
-        </form>
+<div class="content">
+    <!-- upload config file button -->
+    <form id="upload-config-form" action="/upload-file" method="POST" enctype="multipart/form-data">
+        <!-- label acting as the visible "button" -->
+        <label for="config-file-input" id="upload-config-label">Upload a different config</label>
+        <!-- hidden file input -->
+        <input type="file" id="config-file-input" name="file" accept=".json" style="display: none;"
+               onchange="this.form.submit()">
+    </form>
+    <form id="upload-form" action="/upload-targets-file" method="POST" enctype="multipart/form-data">
+        <!-- label acting as the visible "button" -->
+        <label for="file-input" id="upload-file-label">Upload Targets</label>
+        <!-- hidden file input with proper id and name -->
+        <input type="file" id="file-input" name="file" onchange="this.form.submit()">
+    </form>
+    <br>
+    <form action="/update-config" method="POST">
+        <!-- textarea for targets -->
+        <label for="targets" style="display: block">Enter targets:</label>
+        <textarea id="targets" name="targets"
+                  placeholder="Example: 192.168.1.1-192.168.1.4, 192.168.1.0/24, example.com" style="display: inline;">{{ session['config']['targets'] }}</textarea>
         <br>
-        <form action="/update-config" method="POST">
-            <!-- textarea for targets -->
-            <label for="targets" style="display: block">Enter targets:</label>
-            <textarea id="targets" name="targets" placeholder="Example: 192.168.1.1-192.168.1.4, 192.168.1.0/24, example.com" style="display: inline;">{{ session['config']['targets'] }}</textarea>
-            <br>
-            <!-- verbose mode -->
-            <label for="verbose" style="width: auto;" class="form-label">Print output to terminal during scan</label>
-            <div class="verbose_div">
-                <input type="checkbox" id="verbose" name="verbose" value="True" {% if session['config']['verbose'] == 'True' %}checked{% endif %}>
-            </div>
-            <br>
-            <!-- speed -->
-            <label for="speed" style="width: auto;" class="form-label">Overall speed of scan</label>
-            <div class="speed_div">
-                <select id="speed" name="speed">
-                    <option value="Normal" {% if session['config']['speed'] == 'normal' %}selected{% endif %}>Normal</option>
-                    <option value="Slow" {% if session['config']['speed'] == 'slow' %}selected{% endif %}>Slow</option>
-                </select>
-            </div>
-            <br>
-            <!-- update config button -->
-            <button class="btn_margin" type="submit">Save changes</button>
-            <p id="needs-saving" style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">Needs saving!</p>
-        </form>
+        <!-- verbose mode -->
+        <label for="verbose" style="width: auto;" class="form-label">Print output to terminal during scan</label>
+        <div class="verbose_div">
+            <input type="checkbox" id="verbose" name="verbose" value="True" {% if session['config']['verbose'] == 'True'
+            %}checked{% endif %}>
+        </div>
+        <br>
+        <!-- speed -->
+        <label for="speed" style="width: auto;" class="form-label">Overall speed of scan</label>
+        <div class="speed_div">
+            <select id="speed" name="speed">
+                <option value="Normal" {% if session[
+                'config']['speed'] == 'normal' %}selected{% endif %}>Normal</option>
+                <option value="Slow" {% if session[
+                'config']['speed'] == 'slow' %}selected{% endif %}>Slow</option>
+            </select>
+        </div>
+        <br>
+        <!-- update config button -->
+        <button class="btn_margin" type="submit">Save changes</button>
+        <p id="needs-saving"
+           style="color: #FFA400; font-weight: bolder; font-family: 'Aeonik Pro', sans-serif; display: none; display: inline;">
+            Needs saving!</p>
+    </form>
 
-        <!-- run button -->
-        <form action="/running" method="POST">
-            <button class="btn_margin" type="submit">Start Scan</button>
-        </form>
-    </div>
+    <!-- run button -->
+    <form action="/running" method="POST">
+        <button class="btn_margin" type="submit">Start Scan</button>
+    </form>
+</div>
 </body>
 </html>

@@ -1,7 +1,5 @@
-
 import concurrent.futures
 from subprocess import CompletedProcess
-
 from typing import List, Dict
 
 from scanner_tools import (
@@ -13,6 +11,7 @@ from scripts.utils import *
 
 scan_counter = 0
 counter_lock = threading.Lock()
+
 
 def run_on_multiple_targets_test(target_list: List[str], verbose: str) -> List[str]:
     """
@@ -35,8 +34,8 @@ def run_on_multiple_targets_test(target_list: List[str], verbose: str) -> List[s
             "ping_method": "",
             "host_timeout": ""
         }, verbose)
-        #webpage = is_target_webpage(target)
-        #wpscan = run_wpscan(target)
+        # webpage = is_target_webpage(target)
+        # wpscan = run_wpscan(target)
         smbclient_output = remove_ansi_escape_codes(run_smbclient(target, verbose))
         ftp_allowed = run_ftp(target, verbose)
         ftp_string = f"Anonymous FTP login {'allowed' if ftp_allowed else 'not allowed'}"
@@ -60,14 +59,14 @@ def run_on_multiple_targets_test(target_list: List[str], verbose: str) -> List[s
             'robots_file': robots_output,
             'ffuf_subdomain': ffuf_subdomain,
             'ffuf_webpage': ffuf_webpage,
-            #'is_webpage': webpage,
-            #'wpscan': wpscan,
+            # 'is_webpage': webpage,
+            # 'wpscan': wpscan,
             'headers': headers
         }
         results.append(result)
-        #result["ai_advice"] = make_chatgpt_api_call(result)
-        #temp_file_path = tempfile(result)
-        #file_paths.append(temp_file_path)
+        # result["ai_advice"] = make_chatgpt_api_call(result)
+        # temp_file_path = tempfile(result)
+        # file_paths.append(temp_file_path)
 
     return results
 
@@ -101,7 +100,7 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
         future_to_key = {
             executor.submit(run_host, target, verbose): 'host_output',
             executor.submit(run_smbclient, target, verbose): 'smbclient_output',
-            executor.submit(run_ftp, target, verbose):  'ftp_result',
+            executor.submit(run_ftp, target, verbose): 'ftp_result',
             executor.submit(run_dns_recon, target, verbose): 'dns_recon_output',
         }
 
@@ -112,7 +111,8 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
                 if key == 'ftp_result':
                     results[key] = 'Anonymous FTP allowed!' if results[key] else 'Anonymous FTP login not allowed!'
                 elif key == 'metasploit_output':
-                    results[key] = '\n'.join(' '.join(module.values()) for module in results[key]) or "No relevant metasploit modules found"
+                    results[key] = '\n'.join(
+                        ' '.join(module.values()) for module in results[key]) or "No relevant metasploit modules found"
             except Exception as e:
                 results[key] = f"Error: {e}"
 
@@ -121,12 +121,14 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
         with concurrent.futures.ThreadPoolExecutor() as executor:
             webpage_tasks = {
                 'ffuf_webpage': executor.submit(run_ffuf_webpage, target, config["ffuf_webpage_wordlist"],
-                                                config["enable_ffuf"], verbose, config["ffuf_redirect"], config["ffuf_delay"]),
+                                                config["enable_ffuf"], verbose, config["ffuf_redirect"],
+                                                config["ffuf_delay"]),
                 'robots_output': executor.submit(get_robots_file, target, verbose),
                 'ffuf_subdomain': executor.submit(run_ffuf_subdomain,
                                                   target[4:] if target.startswith('www.') else target,
                                                   config["ffuf_subdomain_wordlist"],
-                                                  config["enable_ffuf"], verbose, config["ffuf_redirect"], config["ffuf_delay"]),
+                                                  config["enable_ffuf"], verbose, config["ffuf_redirect"],
+                                                  config["ffuf_delay"]),
                 'screenshot': executor.submit(get_screenshot, target, verbose),
                 'wpscan': executor.submit(run_wpscan, target, verbose),
                 'security_headers': executor.submit(check_security_headers, target)
@@ -227,8 +229,10 @@ if __name__ == '__main__':
         "ffuf_redirect": "False",
         "speed": "normal"
     }
-    targets = ["bbc.co.uk", "www.gov.uk", "dailymail.co.uk", "telegraph.co.uk", "amazon.co.uk", "google.co.uk", "ox.ac.uk", "news.bbc.co.uk", "cam.ac.uk", "guardian.co.uk", "ico.org.uk", "mirror.co.uk", "service.gov.uk", "www.nhs.uk", "thesun.co.uk", "thetimes.co.uk", "express.co.uk", "ucl.ac.uk"]
-    verbose = 'True' #CHANGE THIS IF REQUIRED
+    targets = ["bbc.co.uk", "www.gov.uk", "dailymail.co.uk", "telegraph.co.uk", "amazon.co.uk", "google.co.uk",
+               "ox.ac.uk", "news.bbc.co.uk", "cam.ac.uk", "guardian.co.uk", "ico.org.uk", "mirror.co.uk",
+               "service.gov.uk", "www.nhs.uk", "thesun.co.uk", "thetimes.co.uk", "express.co.uk", "ucl.ac.uk"]
+    verbose = 'True'  # CHANGE THIS IF REQUIRED
     start = time.time()
     run_on_multiple_targets(targets, config)
     print(f"\nConcurrent scan took: {round(time.time() - start, 1)}s")

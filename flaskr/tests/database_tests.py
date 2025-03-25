@@ -1,6 +1,7 @@
 import sqlite3
 import unittest
 
+
 class TestDatabase(unittest.TestCase):
     def setUp(self):
         # Create an in-memory SQLite database
@@ -49,6 +50,7 @@ class TestDatabase(unittest.TestCase):
         self.assertEqual(row[1], 'example.com')
         self.assertEqual(row[2], 'dns')
         self.assertEqual(row[3], 'No issues found')
+
 
 if __name__ == '__main__':
     unittest.main()

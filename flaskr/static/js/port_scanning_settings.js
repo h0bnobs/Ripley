@@ -22,7 +22,7 @@ $(document).ready(function () {
 
     $('#ports').on('input', function () {
         var newPorts = $('#ports').val();
-        if (newPorts !== originalPorts ) {
+        if (newPorts !== originalPorts) {
             $('#needs-saving').css('display', 'inline');
         } else {
             $('#needs-saving').css('display', 'none');
@@ -31,7 +31,7 @@ $(document).ready(function () {
 
     $('#host_timeout').on('input', function () {
         var newHostTimeout = $('#host_timeout').val();
-        if (newHostTimeout !== originalHostTimeout ) {
+        if (newHostTimeout !== originalHostTimeout) {
             $('#needs-saving').css('display', 'inline');
         } else {
             $('#needs-saving').css('display', 'none');

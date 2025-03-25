@@ -23,6 +23,7 @@ from scripts.utils import COLOURS, remove_ansi_escape_codes, remove_leading_newl
 scan_counter = 0
 counter_lock = threading.Lock()
 
+
 def save_scan_results_to_tempfile(results: Dict) -> str:
     """
     Save the results to a temporary file.
@@ -34,6 +35,7 @@ def save_scan_results_to_tempfile(results: Dict) -> str:
     with open(temp_file.name, 'w') as f:
         json.dump(results, f)
     return temp_file.name
+
 
 def start_msf_rpc(msf_password: str, verbose: str):
     """
@@ -50,6 +52,7 @@ def start_msf_rpc(msf_password: str, verbose: str):
                                    stderr=subprocess.DEVNULL)
     time.sleep(0.5)
     return process
+
 
 def check_and_kill_msf_rpc(verbose: str):
     """
@@ -72,6 +75,7 @@ def check_and_kill_msf_rpc(verbose: str):
         subprocess.run('kill ' + t, shell=True)
     else:
         subprocess.run('kill ' + t, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
 
 def process_extra_commands(target: str, extra_commands: str, verbose: str) -> List[str]:
     """
@@ -117,7 +121,8 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
     global scan_counter
 
     nmap_settings = {k: config[k] for k in
-                     ["ports_to_scan", "scan_type", "aggressive_scan", "scan_speed", "os_detection", "ping_hosts", "ping_method", "host_timeout"]}
+                     ["ports_to_scan", "scan_type", "aggressive_scan", "scan_speed", "os_detection", "ping_hosts",
+                      "ping_method", "host_timeout"]}
 
     results = {
         'target': target,
@@ -128,7 +133,7 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
         future_to_key = {
             executor.submit(run_host, target, verbose): 'host_output',
             executor.submit(run_smbclient, target, verbose): 'smbclient_output',
-            executor.submit(run_ftp, target, verbose):  'ftp_result',
+            executor.submit(run_ftp, target, verbose): 'ftp_result',
             executor.submit(run_dns_recon, target, verbose): 'dns_recon_output',
             executor.submit(get_metasploit_modules, target, pid, verbose): 'metasploit_output'
         }
@@ -140,7 +145,8 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
                 if key == 'ftp_result':
                     results[key] = 'Anonymous FTP allowed!' if results[key] else 'Anonymous FTP login not allowed!'
                 elif key == 'metasploit_output':
-                    results[key] = '\n'.join(' '.join(module.values()) for module in results[key]) or "No relevant metasploit modules found"
+                    results[key] = '\n'.join(
+                        ' '.join(module.values()) for module in results[key]) or "No relevant metasploit modules found"
             except Exception as e:
                 results[key] = f"Error: {e}"
 
@@ -149,12 +155,14 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
         with concurrent.futures.ThreadPoolExecutor() as executor:
             webpage_tasks = {
                 'ffuf_webpage': executor.submit(run_ffuf_webpage, target, config["ffuf_webpage_wordlist"],
-                                                config["enable_ffuf"], verbose, config["ffuf_redirect"], config["ffuf_delay"]),
+                                                config["enable_ffuf"], verbose, config["ffuf_redirect"],
+                                                config["ffuf_delay"]),
                 'robots_output': executor.submit(get_robots_file, target, verbose),
                 'ffuf_subdomain': executor.submit(run_ffuf_subdomain,
                                                   target[4:] if target.startswith('www.') else target,
                                                   config["ffuf_subdomain_wordlist"],
-                                                  config["enable_ffuf"], verbose, config["ffuf_redirect"], config["ffuf_delay"]),
+                                                  config["enable_ffuf"], verbose, config["ffuf_redirect"],
+                                                  config["ffuf_delay"]),
                 'screenshot': executor.submit(get_screenshot, target, verbose),
                 'wpscan': executor.submit(run_wpscan, target, verbose),
                 'security_headers': executor.submit(check_security_headers, target)
@@ -208,11 +216,11 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
     final_str = ""
     if 'security_headers' in results and isinstance(results['security_headers'], dict):
         for header, value in results['security_headers'].items():
-            if value != "": #if there was a match for the headers we were looking for and the headers we found
+            if value != "":  # if there was a match for the headers we were looking for and the headers we found
                 final_str += f"{header}: {value}\n"
         final_str += "\n"
         for header, value in results['security_headers'].items():
-            if value == "": #if there wasnt a match
+            if value == "":  # if there wasnt a match
                 final_str += f"{header}: \n"
         results['security_headers'] = final_str
 
@@ -226,7 +234,7 @@ def run_scans(target: str, config: Dict, pid: int, verbose: str, total_scans: in
     return results
 
 
-def save_to_db(db, results: dict, extra_commands: list[str]=None) -> None:
+def save_to_db(db, results: dict, extra_commands: list[str] = None) -> None:
     """
     Save the results to the database.
     :param db: The database connection.
@@ -332,7 +340,7 @@ def run_on_single_target(target_list: List[str], config: Dict) -> str:
     results = {k: (v.stdout if isinstance(v, CompletedProcess) else v) for k, v in results.items()}
     extra_commands: list = config['extra_commands'].split(', ')
     save_to_db(get_db(), results, extra_commands=extra_commands)
-    #run_command_no_output(f'rm flaskr/static/temp/nmap-{target}.xml')
+    # run_command_no_output(f'rm flaskr/static/temp/nmap-{target}.xml')
     temp_file_path = save_scan_results_to_tempfile(results)
 
     # a .txt file to store the temp file path

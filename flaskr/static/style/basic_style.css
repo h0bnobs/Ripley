@@ -87,6 +87,17 @@
     display: none;
 }
 
+.top-right-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    text-decoration: underline;
+    color: black;
+    font-family: "Aeonik Pro", sans-serif;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
 #os_detection_warning, #aggressive_scan_warning, #ffuf_redirect_warning, #needs-saving {
     font-size: 13px;
     color: #FFA400;

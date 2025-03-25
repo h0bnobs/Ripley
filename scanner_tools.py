@@ -2,17 +2,17 @@ import ftplib
 import os
 import subprocess
 import time
+from subprocess import CompletedProcess, CalledProcessError
 
 import requests
 from libnmap.parser import NmapParser
 from pymetasploit3.msfrpc import MsfRpcClient
+from selenium import webdriver
+from selenium.common import WebDriverException
+from selenium.webdriver.chrome.options import Options
 
 from scripts.run_commands import run_command_with_output_after, run_command_live_output, run_command_with_input
 from scripts.utils import COLOURS, find_full_filepath, parse_nmap_xml
-from subprocess import CompletedProcess, CalledProcessError
-from selenium.common import WebDriverException
-from selenium.webdriver.chrome.options import Options
-from selenium import webdriver
 
 
 def run_wpscan(target: str, verbose: str) -> str:
@@ -73,15 +73,16 @@ def get_metasploit_modules(target: str, pid: int, verbose: str) -> list[dict[str
         :return: A list of dictionaries containing the module information if they are found.
         """
         search_results = client.modules.search(product)
-        return [result for result in search_results if any(isinstance(value, str) and version in value for value in result.values())]
+        return [result for result in search_results if
+                any(isinstance(value, str) and version in value for value in result.values())]
 
-    #check_and_kill_msf_rpc()
-    #msf_process = start_msf_rpc()
-    #pid = msf_process.pid
+    # check_and_kill_msf_rpc()
+    # msf_process = start_msf_rpc()
+    # pid = msf_process.pid
     try:
         client = connect_to_msf()
         report = NmapParser.parse_fromfile(output_filepath)
-        for host in report.hosts: # report.hosts is a list
+        for host in report.hosts:  # report.hosts is a list
             for service in host.services:
                 # services are open ports
                 # host.services is a list
@@ -102,7 +103,7 @@ def is_target_webpage(target: str) -> bool:
     :return: True if the target has one of the mentioned ports open, False otherwise.
     """
     open_ports = parse_nmap_xml(f'flaskr/static/temp/nmap-{target}.xml', [80, 443, 8080, 8443])
-    #return open_ports in ['80', '443', '8080', '8443']
+    # return open_ports in ['80', '443', '8080', '8443']
     return any(port in open_ports for port in ['80', '443', '8080', '8443'])
     # if '80' in open_ports or '443' in open_ports or '8080' in open_ports or '8443' in open_ports:
     #     return True
@@ -254,6 +255,7 @@ def run_nmap(target: str, nmap_settings: dict, verbose: str) -> str:
     :param verbose: A string that is either 'True' or 'False' to enable or disable verbose output.
     :return: The output of the nmap tool as a string.
     """
+
     # spinner = Spinner()
     # spinner.start()
     # spinner.stop()

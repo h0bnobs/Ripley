@@ -7,13 +7,13 @@
 <body>
 <ul>
     {% for file in files_in_directory %}
-        <li>
-            {{ file }}
-            <form action="/set-config" method="post" style="display:inline;">
-                <input type="hidden" name="config_file" value="{{ file }}">
-                <button type="submit">Select</button>
-            </form>
-        </li>
+    <li>
+        {{ file }}
+        <form action="/set-config" method="post" style="display:inline;">
+            <input type="hidden" name="config_file" value="{{ file }}">
+            <button type="submit">Select</button>
+        </form>
+    </li>
     {% endfor %}
 </ul>
 

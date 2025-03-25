@@ -1,14 +1,13 @@
-import threading
 import itertools
-import sys
-import time
 import json
-from termcolor import colored
-import re
 import os
+import re
+import sys
+import threading
+import time
 import xml.etree.ElementTree as ET
 
-from scripts.run_commands import run_command_with_output_after, run_command_no_output
+from termcolor import colored
 
 COLOURS = {
     "plus": "\033[1;34m[\033[1;m\033[1;32m+\033[1;m\033[1;34m]",
@@ -30,6 +29,7 @@ class Spinner:
     """
     Class for the spinner, which runs when nmap is running.
     """
+
     def __init__(self):
         self.stop_event = threading.Event()
         self.spin_thread = threading.Thread(target=self.spin, daemon=True)
@@ -99,6 +99,7 @@ https://github.com/h0bnobs/Ripley
 I love beesec
 """
 
+
 def parse_config_file(filepath: str) -> dict:
     """
     Parses the JSON configuration file.
@@ -116,7 +117,7 @@ def remove_ansi_escape_codes(text) -> str:
     :param text: The text to remove ANSI from.
     :return: The result string with no ANSI
     """
-    #print(text)
+    # print(text)
     ansi_escape = re.compile(r'\x1B[@-_][0-?]*[ -/]*[@-~]')
     return ansi_escape.sub('', text)
 
@@ -132,6 +133,7 @@ def find_full_filepath(directory: str, filename: str):
         if filename in files:
             return os.path.join(root, filename)
     return None
+
 
 def parse_nmap_xml(xml_file: str, ports_to_check: list[int]) -> list[str]:
     """
@@ -186,6 +188,7 @@ def remove_leading_newline(text: str) -> str:
     if text.startswith('\n'):
         return text[1:]
     return text
+
 
 def get_extra_commands(filepath: str) -> list[str] | None:
     """
