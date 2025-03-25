@@ -10,13 +10,15 @@ $(document).ready(function () {
     const $ffufOptions = $('#ffuf_delay_div, #ffuf_wordlists, #ffuf_redirect_div');
     const $chatgptModel = $('#chatgpt_model');
     const $ffufRedirect = $('#ffuf_redirect');
+    const $ffufDelay = $('#ffuf_delay');
 
     let originalApiKey = $apiKeyInput.val();
     let originalChatGPT = $chatGPTCall.is(':checked');
     let originalConfigFilepath = $configFilepathInput.val();
     let enableFfufChecked = $enableFfuf.is(':checked');
     let originalChatGPTModel = $chatgptModel.val();
-    let originalFfufRedirect = $('#ffuf_redirect').is(':checked');
+    let originalFfufRedirect = $ffufRedirect.is(':checked');
+    let originalFfufDelay = $ffufDelay.val();
 
     function toggleElement($element, condition) {
         $element.toggle(condition);
@@ -73,7 +75,7 @@ $(document).ready(function () {
     $ffufRedirect.on('change', function () {
         checkChanges(originalFfufRedirect, $(this).val());
         toggleFfufRedirectWarning();
-    })
+    });
 
     $chatgptModel.on('change', function () {
         checkChanges(originalChatGPTModel, $(this).val());
@@ -91,6 +93,10 @@ $(document).ready(function () {
 
     $configFilepathInput.on('input', function () {
         toggleConfigFilepathWarning();
+    });
+
+    $ffufDelay.on('input', function () {
+        checkChanges(originalFfufDelay, $(this).val());
     });
 
     $('#subdomain-file').on('change', function () {
