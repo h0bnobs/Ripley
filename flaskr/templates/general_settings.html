@@ -9,9 +9,6 @@
     <script src="../static/js/index.js"></script>
 </head>
 <body>
-<div class="top-right-button">
-    <a href="user-manual?page=general" class="button">User Manual</a>
-</div>
 <div class="vertical-bar">
     <a href="general-settings" class="active">General</a>
     <a href="port-scanning-settings">Port Scanning</a>
@@ -22,6 +19,9 @@
 </div>
 
 <div class="content">
+    <div class="top-right-button">
+        <a href="user-manual?page=general" class="button">User Manual</a>
+    </div>
     <!-- upload config file button -->
     <form id="upload-config-form" action="/upload-file" method="POST" enctype="multipart/form-data">
         <!-- label acting as the visible "button" -->

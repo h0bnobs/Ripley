@@ -73,8 +73,8 @@
 - More work on the GUI. [Screenshot 1](screenshots/24-10-24_01.png) & [Screenshot 2](screenshots/24-10-24_02.png)
     - Added collapsible report elements so that it's a bit more organised.
     -
-    Added [multiple_targets_result.html](../flaskr/templates/multiple_targets_result.html) & [single_target_result.html](../flaskr/templates/single_target_result.html)
-    for organised results per the scan.
+  Added [multiple_targets_result.html](../flaskr/templates/multiple_targets_result.html) & [single_target_result.html](../flaskr/templates/single_target_result.html)
+  for organised results per the scan.
     - Had to rework [the init file](../flaskr/__init__.py) & [run_tool_for_gui](../run_tool_for_gui.py) so that the scan
       results are handled and displayed correctly!
 
@@ -346,6 +346,7 @@
 - Added the ffuf wordlists just in case.
 
 ### Tuesday 25th March
+
 25/03/25 10:15am
 
 - Reworked the wordlist check method.
