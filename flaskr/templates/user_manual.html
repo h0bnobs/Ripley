@@ -12,7 +12,8 @@
     <a href="{{ url_for('user_manual', page='host-discovery') }}">Host Discovery</a> |
     <a href="{{ url_for('user_manual', page='advanced-settings') }}">Advanced Settings</a> |
     <a href="{{ url_for('user_manual', page='add-commands') }}">Add Commands</a> |
-    <a href="{{ url_for('user_manual', page='previous-scans') }}">Previous Scans</a>
+    <a href="{{ url_for('user_manual', page='previous-scans') }}">Previous Scans</a> |
+    <a href="{{ url_for('user_manual', page='cli') }}">CLI</a>
 </nav>
 
 <hr>
@@ -126,6 +127,10 @@ be removed or edited.</p>
 {% elif page == 'previous-scans' %}
 <h1>Previous Scans Page</h1>
 <p>This page is for viewing each previous scan one at a time. The user can filter by date and/or target</p>
+{% elif page == 'cli' %}
+<h1>CLI and GPT</h1>
+<p>The CLI version <code style="font-size: 1.2em;">ripley_cli.py</code> takes just one parameter which is the config with -c. This script works exactly the same way as the GUI, uses the same config, but just doesn't display the results at the end and instead displays as it runs (so long as verbose mode is set to True!).</p>
+<p>as of 25th March, the account linked to the API key I provided in the corpus has around $20 worth of credits on it which is more than enough for testing.</p>
 {% endif %}
 </body>
 </html>
