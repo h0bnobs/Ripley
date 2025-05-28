@@ -1,5 +1,7 @@
 # Ripley
 
+Nessus style enumerator/vulnerability scanner. Final year uni project.
+
 ### Prerequisites
 
 - Kali Linux & root access
@@ -8,7 +10,7 @@
 ### Setup Instructions
 
 ```
-sudo su
+sudo su #create and run as root for full functionality
 cd ~
 git clone https://github.com/h0bnobs/Ripley
 cd Ripley
